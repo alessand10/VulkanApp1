@@ -1,0 +1,1 @@
+/home/alessandro/nvidia/NVIDIA-Nsight-Graphics-2024.2/host/linux-desktop-nomad-x64/ngfx-ui
