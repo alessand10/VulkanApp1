@@ -21,6 +21,16 @@ enum class AppBufferTemplate {
     INDEX_BUFFER_STAGING
 };
 
+struct AppInstance : AppResource<VkInstance>{};
+struct AppSurface : AppResource<VkSurfaceKHR>{};
+struct AppDevice : AppResource<VkDevice> {};
+
+struct QueueFamilyIndices {
+    uint32_t graphics;
+    uint32_t compute;
+    uint32_t transfer;
+};
+
 /**
  * A Wrapper around a VkImage, VkDeviceMemory, VkImageView, and VkSampler which holds information regarding the image
  */

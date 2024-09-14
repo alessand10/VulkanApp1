@@ -66,10 +66,10 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     uboCreateInfo.size = sizeof(UBO);
     uboCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    THROW(vkCreateBuffer(resourceManager->app->logicalDevice, &uboCreateInfo, nullptr, &computeUBO), "Failed to create UBO");
+    THROW(vkCreateBuffer(resourceManager->app->logicalDevice.get(), &uboCreateInfo, nullptr, &computeUBO), "Failed to create UBO");
 
     VkMemoryRequirements uboMemReqs;
-    vkGetBufferMemoryRequirements(app->logicalDevice, computeUBO, &uboMemReqs);
+    vkGetBufferMemoryRequirements(app->logicalDevice.get(), computeUBO, &uboMemReqs);
     uint32_t uboMemIndex = resourceManager->getSuitableMemoryTypeIndex(uboMemReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
     VkMemoryAllocateInfo uboAllocInfo{};
@@ -78,9 +78,9 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     uboAllocInfo.memoryTypeIndex = uboMemIndex;
     uboAllocInfo.allocationSize = uboMemReqs.size;
 
-    THROW(vkAllocateMemory(app->logicalDevice, &uboAllocInfo, nullptr, &computeUBOMemory), "Failed to allocate UBO memory");
+    THROW(vkAllocateMemory(app->logicalDevice.get(), &uboAllocInfo, nullptr, &computeUBOMemory), "Failed to allocate UBO memory");
 
-    THROW(vkBindBufferMemory(app->logicalDevice, computeUBO, computeUBOMemory, 0U), "Failed to bind UBO memory");
+    THROW(vkBindBufferMemory(app->logicalDevice.get(), computeUBO, computeUBOMemory, 0U), "Failed to bind UBO memory");
 
     outputImage = resourceManager->createImageAll(1024U, 1024U, AppImageTemplate::DEVICE_WRITE_SAMPLED_TEXTURE);
 
@@ -111,7 +111,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     compShaderModuleCreateInfo.pCode = reinterpret_cast<uint32_t*>(shaderCode.data());
     compShaderModuleCreateInfo.codeSize = shaderCode.size();
 
-    THROW(vkCreateShaderModule(app->logicalDevice, &compShaderModuleCreateInfo, nullptr, &computeShaderModule), "Failed to create compute shader module");
+    THROW(vkCreateShaderModule(app->logicalDevice.get(), &compShaderModuleCreateInfo, nullptr, &computeShaderModule), "Failed to create compute shader module");
     
 
     VkPipelineShaderStageCreateInfo shaderStageCreateInfo{};
@@ -132,7 +132,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     computePipelineLayoutCreateInfo.pushConstantRangeCount = 0U;
     computePipelineLayoutCreateInfo.flags = 0U;
 
-    THROW(vkCreatePipelineLayout(app->logicalDevice, &computePipelineLayoutCreateInfo, nullptr, &computePipelineLayout), "Failed to create compute pipeline layout");
+    THROW(vkCreatePipelineLayout(app->logicalDevice.get(), &computePipelineLayoutCreateInfo, nullptr, &computePipelineLayout), "Failed to create compute pipeline layout");
 
     /**
      * Next, we create the compute pipeline
@@ -146,7 +146,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     computePipelineCreateInfo.stage = shaderStageCreateInfo;
     computePipelineCreateInfo.layout = computePipelineLayout;
 
-    THROW(vkCreateComputePipelines(app->logicalDevice, nullptr, 1U, &computePipelineCreateInfo, nullptr, &computePipeline), "Failed to create compute pipeline");
+    THROW(vkCreateComputePipelines(app->logicalDevice.get(), nullptr, 1U, &computePipelineCreateInfo, nullptr, &computePipeline), "Failed to create compute pipeline");
 
 
     /**
@@ -156,9 +156,9 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     VkCommandPoolCreateInfo commandPoolCreateInfo{};
     commandPoolCreateInfo.pNext = nullptr;
     commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    commandPoolCreateInfo.queueFamilyIndex = app->queueIndices.compute;
+    commandPoolCreateInfo.queueFamilyIndex = app->queueFamilyIndices.compute;
     commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // enable ability to reset buffer individually
-    THROW(vkCreateCommandPool(app->logicalDevice, &commandPoolCreateInfo, nullptr, &computeCommandPool), "Failed to create command pool");
+    THROW(vkCreateCommandPool(app->logicalDevice.get(), &commandPoolCreateInfo, nullptr, &computeCommandPool), "Failed to create command pool");
 
 
     VkCommandBufferAllocateInfo commandBufferAllocInfo{};
@@ -168,7 +168,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     commandBufferAllocInfo.commandBufferCount = 1;
     commandBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-    THROW(vkAllocateCommandBuffers(app->logicalDevice, &commandBufferAllocInfo, &computeCommandBuffer), "Failed to allocate command buffer");
+    THROW(vkAllocateCommandBuffers(app->logicalDevice.get(), &commandBufferAllocInfo, &computeCommandBuffer), "Failed to allocate command buffer");
 
 
     /**
@@ -181,7 +181,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceCreateInfo.flags = 0U; 
 
-    THROW(vkCreateFence(app->logicalDevice, &fenceCreateInfo, nullptr, &computeShaderBusyFence), "Failed to create fence");
+    THROW(vkCreateFence(app->logicalDevice.get(), &fenceCreateInfo, nullptr, &computeShaderBusyFence), "Failed to create fence");
 
     /**
      * We now update the descriptor set that we created for this pipeline
@@ -236,8 +236,8 @@ void computeShaderSetup(ResourceManager* resourceManager) {
 
     vkQueueSubmit(app->computeQueue, 1U, &submitInfo, computeShaderBusyFence);
 
-    vkWaitForFences(app->logicalDevice, 1U, &computeShaderBusyFence, true, UINT32_MAX);
-    vkResetFences(app->logicalDevice, 1U, &computeShaderBusyFence);
+    vkWaitForFences(app->logicalDevice.get(), 1U, &computeShaderBusyFence, true, UINT32_MAX);
+    vkResetFences(app->logicalDevice.get(), 1U, &computeShaderBusyFence);
 
 
     /** 
@@ -245,7 +245,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
      * this memory will remain mapped until cleanup
      */
 
-    THROW(vkMapMemory(app->logicalDevice, computeUBOMemory, 0U, sizeof(UBO), 0U, &mappedMemory), "Failed to map memory");
+    THROW(vkMapMemory(app->logicalDevice.get(), computeUBOMemory, 0U, sizeof(UBO), 0U, &mappedMemory), "Failed to map memory");
     
 }
 
@@ -286,8 +286,8 @@ void computeShaderWriteCommandBuffer(ResourceManager *resourceManager)
     // The compute shader fence is signalled once the operation is complete
     THROW(vkQueueSubmit(app->computeQueue, 1U, &submitInfo, computeShaderBusyFence), "Failed to submit command buffer to queue");
 
-    vkWaitForFences(app->logicalDevice, 1U, &computeShaderBusyFence, true, UINT32_MAX);
-    vkResetFences(app->logicalDevice, 1U, &computeShaderBusyFence);
+    vkWaitForFences(app->logicalDevice.get(), 1U, &computeShaderBusyFence, true, UINT32_MAX);
+    vkResetFences(app->logicalDevice.get(), 1U, &computeShaderBusyFence);
     
     /**
      * This will run at the start of recording the command buffer, after the render pass has started
@@ -297,14 +297,14 @@ void computeShaderWriteCommandBuffer(ResourceManager *resourceManager)
 void computeShaderCleanup(ResourceManager* resourceManager)
 {
     VulkanApp* app = resourceManager->app;
-    vkUnmapMemory(app->logicalDevice, computeUBOMemory);
-    vkDeviceWaitIdle(app->logicalDevice);
-    vkDestroyFence(app->logicalDevice, computeShaderBusyFence, nullptr);
-    vkFreeCommandBuffers(app->logicalDevice, computeCommandPool, 1U, &computeCommandBuffer);
-    vkDestroyCommandPool(app->logicalDevice, computeCommandPool, nullptr);
-    vkDestroyPipeline(app->logicalDevice, computePipeline, nullptr);
-    vkDestroyPipelineLayout(app->logicalDevice, computePipelineLayout, nullptr);
-    vkDestroyShaderModule(app->logicalDevice, computeShaderModule, nullptr);
-    vkFreeMemory(app->logicalDevice, computeUBOMemory, nullptr);
-    vkDestroyBuffer(app->logicalDevice, computeUBO, nullptr);
+    vkUnmapMemory(app->logicalDevice.get(), computeUBOMemory);
+    vkDeviceWaitIdle(app->logicalDevice.get());
+    vkDestroyFence(app->logicalDevice.get(), computeShaderBusyFence, nullptr);
+    vkFreeCommandBuffers(app->logicalDevice.get(), computeCommandPool, 1U, &computeCommandBuffer);
+    vkDestroyCommandPool(app->logicalDevice.get(), computeCommandPool, nullptr);
+    vkDestroyPipeline(app->logicalDevice.get(), computePipeline, nullptr);
+    vkDestroyPipelineLayout(app->logicalDevice.get(), computePipelineLayout, nullptr);
+    vkDestroyShaderModule(app->logicalDevice.get(), computeShaderModule, nullptr);
+    vkFreeMemory(app->logicalDevice.get(), computeUBOMemory, nullptr);
+    vkDestroyBuffer(app->logicalDevice.get(), computeUBO, nullptr);
 }

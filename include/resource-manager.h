@@ -15,6 +15,15 @@ class ResourceManager {
     public:
     class VulkanApp* app;
 
+    std::list<VkInstance> instances;
+    AppInstance createInstance(const char* appName, bool enableValidationLayers);
+
+    std::list<VkSurfaceKHR> surfaces;
+    AppSurface createSurface(AppInstance instance, class GLFWwindow* window);
+
+    std::list<VkDevice> devices;
+    AppDevice createDevice(VkPhysicalDevice physicalDevice, QueueFamilyIndices* queueFamilyIndices);
+
     std::list<VkDeviceMemory> deviceMemorySet;
 
     std::list<VkImage> images;

@@ -20,13 +20,13 @@ std::vector<std::string> splitString(std::string &s, const std::string &delimite
  * Loads an image in R8G8B8 format
  */
 AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
-    VkDevice device = app->logicalDevice;
+    VkDevice device = app->logicalDevice.get();
 
     AppImageBundle returnImageBundle {};
     
     AppImage dummyImage = app->resourceManager.createImage(1U, 1U, AppImageTemplate::STAGING_IMAGE_TEXTURE);
     VkMemoryRequirements imageMemoryRequirements{};
-    vkGetImageMemoryRequirements(app->logicalDevice, dummyImage.get(), &imageMemoryRequirements);
+    vkGetImageMemoryRequirements(app->logicalDevice.get(), dummyImage.get(), &imageMemoryRequirements);
 
     int width = 0, height = 0;
 
@@ -41,7 +41,7 @@ AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
     stagingImage = app->resourceManager.createImage(width, height, AppImageTemplate::STAGING_IMAGE_TEXTURE);
     
     VkMemoryRequirements stagingImageMemoryRequirements;
-    vkGetImageMemoryRequirements(app->logicalDevice, stagingImage.get(), &stagingImageMemoryRequirements);
+    vkGetImageMemoryRequirements(app->logicalDevice.get(), stagingImage.get(), &stagingImageMemoryRequirements);
 
     returnImageBundle.deviceMemory = app->resourceManager.allocateImageMemory(returnImageBundle.image);
     stagingImageMemory = app->resourceManager.allocateImageMemory(stagingImage);

@@ -7,217 +7,31 @@
 
 VulkanApp* appHandle;
 
-bool VulkanApp::isPhysicalDeviceSuitable(VkPhysicalDevice device)
-{
-    return true;
-}
-
-VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
-{
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
-    return VK_FALSE;
-
-}
-
-VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger)
-
-{
-    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void VulkanApp::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
-{
-    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-    if (func != nullptr) {
-        func(instance, debugMessenger, pAllocator);
-    }
-}
-
-void VulkanApp::setupDebugMessenger()
-{
-    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    createInfo.pfnUserCallback = debugCallback;
-    createInfo.pUserData = nullptr; // Optional
-
-    if (CreateDebugUtilsMessengerEXT(instance, &createInfo, NULL, &debugMessenger) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create debug messenger");
-    }
-}
-
-void VulkanApp::initVulkanLoader()
-{
-    glfwInitVulkanLoader(vkGetInstanceProcAddr);
-}
-
-void VulkanApp::createWindow()
-{   
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
-    glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_ANGLE_PLATFORM_TYPE_VULKAN);
-
-    if (!glfwInit()) {
-        throw std::runtime_error("Failed to initialize glfw library");
-    }
-
-    // This flag prevents the window from showing, but is necessary because otherwise the openGL context has ownership
-    // over presentation on the window and Vulkan surface creation fails
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
-    window = glfwCreateWindow(1080, 720, "Vulkan App", NULL, NULL);
-
-    glfwSetCursorPosCallback(window, glfwCursorPositionCallback);
-    glfwSetKeyCallback(window, glfwKeyCallback);
-
-}
-
-void VulkanApp::createInstance()
-{
-    VkApplicationInfo appCreateInfo{};
-    appCreateInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appCreateInfo.pApplicationName = "Vulkan App";
-    appCreateInfo.applicationVersion = VK_MAKE_API_VERSION(1, 1, 0, 0);
-    appCreateInfo.pEngineName = "No Engine";
-    appCreateInfo.engineVersion = VK_MAKE_API_VERSION(1, 1, 0, 0);
-    appCreateInfo.apiVersion = VK_API_VERSION_1_2;
-
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    
-
-    // Retrieve the vulkan extensions required by glfw
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    std::vector<const char*> extensions = {};
-    for (int index = 0 ; index < glfwExtensionCount ; index++) extensions.push_back(glfwExtensions[index]);
-
-    if (enableValidationLayers)
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
-    VkInstanceCreateInfo instanceCreateInfo{};
-    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    instanceCreateInfo.pApplicationInfo = &appCreateInfo;
-    instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
-    instanceCreateInfo.enabledExtensionCount = extensions.size();
-    instanceCreateInfo.pNext = NULL;
-    if (enableValidationLayers) {
-        instanceCreateInfo.enabledLayerCount = validationLayers.size();
-        instanceCreateInfo.ppEnabledLayerNames = validationLayers.data();
-    }
-    else {
-        instanceCreateInfo.enabledLayerCount = 0;
-        instanceCreateInfo.ppEnabledLayerNames = NULL;
-    }
-
-    // I dont know what allocation callbacks is (nullptr attribute), I'd imagine functions called
-    // upon allocation of the resources
-    VkResult res = vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
-    if (res!= VK_SUCCESS) {
-        throw std::runtime_error("Failed to create vulkan instance");
-    }
-
-}
-
-void VulkanApp::selectPhysicalDevice()
-{
-    uint32_t physicalDeviceCount;
-
-    // Retrieve the physical devices (each single complete implementation of vulkan)
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
-    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
-
-    // For the purposes of this app, I will just select my device manually (as I only have one)
-    physicalDevice = physicalDevices[0];
-
-}
-
-void VulkanApp::setQueueIndices()
-{
-    uint32_t queueFamilyCount = 0;
-
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
-    std::vector<VkQueueFamilyProperties> familyProperties(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, familyProperties.data());
-
-    int index = 0;
-    for (VkQueueFamilyProperties family : familyProperties) {
-        if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            queueIndices.graphics = index;
-        else if (family.queueFlags & VK_QUEUE_COMPUTE_BIT)
-            queueIndices.compute = index;
-        index++;
-    }
-}
-
-void VulkanApp::createLogicalDeviceAndQueues()
-{
-    float queuePriority = 1.0f;
-
-    VkDeviceQueueCreateInfo deviceGraphicsQueueCreateInfo{};
-    deviceGraphicsQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceGraphicsQueueCreateInfo.queueCount = 1;
-    deviceGraphicsQueueCreateInfo.queueFamilyIndex = queueIndices.graphics;
-    deviceGraphicsQueueCreateInfo.pQueuePriorities = &queuePriority;
-    deviceGraphicsQueueCreateInfo.pNext = NULL;
-
-    VkDeviceQueueCreateInfo deviceComputeQueueCreateInfo{};
-    deviceComputeQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    deviceComputeQueueCreateInfo.queueCount = 1;
-    deviceComputeQueueCreateInfo.queueFamilyIndex = queueIndices.compute;
-    deviceComputeQueueCreateInfo.pQueuePriorities = &queuePriority;
-    deviceComputeQueueCreateInfo.pNext = NULL;
-
-    VkDeviceQueueCreateInfo queueCreateInfos[] = {deviceGraphicsQueueCreateInfo, deviceComputeQueueCreateInfo};
-
-    const char swapchainExtension[] = {"VK_KHR_swapchain"};
-    const char* extensions[] = {swapchainExtension};
-
-    VkDeviceCreateInfo deviceCreateInfo{};
-    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.enabledExtensionCount = 1;
-    deviceCreateInfo.ppEnabledExtensionNames = extensions;
-    deviceCreateInfo.queueCreateInfoCount = 2;
-    deviceCreateInfo.pQueueCreateInfos = queueCreateInfos;
-    deviceCreateInfo.pNext = NULL;
-    deviceCreateInfo.enabledLayerCount = 0;
-    deviceCreateInfo.ppEnabledLayerNames = NULL;
-    deviceCreateInfo.pEnabledFeatures = NULL; 
-    deviceCreateInfo.flags = 0;
-
-    vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
-
-    vkGetDeviceQueue(logicalDevice, queueIndices.graphics, 0, &graphicsQueue);
-    vkGetDeviceQueue(logicalDevice, queueIndices.graphics, 0, &presentQueue);
-    vkGetDeviceQueue(logicalDevice, queueIndices.compute, 0U, &computeQueue);
-}
-
-
 void VulkanApp::init()
 {
+    // Initialize the vulkan loader
+    glfwInitVulkanLoader(vkGetInstanceProcAddr);
+
     // keep track of the handle to call this app's methods from glfw static callback functions
     appHandle = this;
     meshManager.init(this);
     resourceManager.init(this);
-    initVulkanLoader();
+
     createWindow();
-    createInstance();
-    if (enableValidationLayers){
-        setupDebugMessenger();
-    }
+
+    instance = resourceManager.createInstance("Vulkan App", true);
+    setupDebugMessenger();
+
     selectPhysicalDevice();
-    setQueueIndices();
-    createLogicalDeviceAndQueues();
 
-    THROW(glfwCreateWindowSurface(instance, window, NULL, &surface), "Failed to create window surface");
+    logicalDevice = resourceManager.createDevice(physicalDevice, &queueFamilyIndices);
+    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &graphicsQueue);
+    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &presentQueue);
+    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.compute, 0U, &computeQueue);
 
-    commandPool = resourceManager.createCommandPool(queueIndices.graphics);
+    surface = resourceManager.createSurface(instance, window);
+
+    commandPool = resourceManager.createCommandPool(queueFamilyIndices.graphics);
     commandBuffer = resourceManager.allocateCommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
     albedo = createAndLoadVulkanImage("../images/muddy_base.ppm", this);
@@ -282,7 +96,7 @@ void VulkanApp::init()
 
         // Map the memory for the Uniform Buffer Objects
         mappedUBOs.push_back({});
-        vkMapMemory(logicalDevice, uniformBuffersVS[frame].deviceMemory.get(), 0u, sizeof(VSUniformBuffer), 0, &(mappedUBOs[frame]));
+        vkMapMemory(logicalDevice.get(), uniformBuffersVS[frame].deviceMemory.get(), 0u, sizeof(VSUniformBuffer), 0, &(mappedUBOs[frame]));
 
         // Create a framebuffer for the resources of this frame
         swapchain.framebuffers.push_back(resourceManager.createFramebuffer(renderPass, {
@@ -376,13 +190,13 @@ void VulkanApp::drawFrame(float deltaTime)
      */
 
     // Step 1. Wait for the previous frame to render
-    vkWaitForFences(logicalDevice, 1, &inFlightFence, VK_TRUE, UINT32_MAX);
+    vkWaitForFences(logicalDevice.get(), 1, &inFlightFence, VK_TRUE, UINT32_MAX);
 
     //computeShaderWriteCommandBuffer(&resourceManager);
 
     // Step 2. Aquire an image from the swap chain (well an index to it actually)
     uint32_t freeImageIndex;
-    VkResult acquireImageResult = vkAcquireNextImageKHR(logicalDevice, swapchain.get(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &freeImageIndex);
+    VkResult acquireImageResult = vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &freeImageIndex);
     if (acquireImageResult == VK_ERROR_OUT_OF_DATE_KHR || acquireImageResult == VK_SUBOPTIMAL_KHR) {
         resourceManager.destroySwapchain(swapchain);
 
@@ -399,7 +213,7 @@ void VulkanApp::drawFrame(float deltaTime)
     }
 
     // Return fence to unsignaled state (only if we know we successfully retrieved an image, otherwise we may end up in a deadlock)
-    vkResetFences(logicalDevice, 1, &inFlightFence);
+    vkResetFences(logicalDevice.get(), 1, &inFlightFence);
 
     // Step 3. Record a command buffer to draw the scene onto the image
     vkResetCommandBuffer(commandBuffer, 0U);
@@ -457,7 +271,7 @@ void VulkanApp::renderLoop()
     }
 
     // Wait for all operations to clear up before exiting so that all objects can be destroyed
-    vkDeviceWaitIdle(logicalDevice);
+    vkDeviceWaitIdle(logicalDevice.get());
 }
 
 void VulkanApp::tickTimer()
@@ -532,16 +346,90 @@ void VulkanApp::processKeyActions()
     if (qDown) appCamera.moveUp(dist * -1.f);
 }
 
+bool VulkanApp::isPhysicalDeviceSuitable(VkPhysicalDevice device)
+{
+    return true;
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+{
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+
+}
+
+VkResult VulkanApp::CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger)
+
+{
+    auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    } else {
+        return VK_ERROR_EXTENSION_NOT_PRESENT;
+    }
+}
+
+void VulkanApp::DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks *pAllocator)
+{
+    auto func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+    if (func != nullptr) {
+        func(instance, debugMessenger, pAllocator);
+    }
+}
+
+void VulkanApp::setupDebugMessenger()
+{
+    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.pfnUserCallback = debugCallback;
+    createInfo.pUserData = nullptr; // Optional
+
+    if (CreateDebugUtilsMessengerEXT(instance.get(), &createInfo, NULL, &debugMessenger) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create debug messenger");
+    }
+}
+
+void VulkanApp::createWindow()
+{   
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_ANGLE_PLATFORM_TYPE_VULKAN);
+
+    if (!glfwInit()) {
+        throw std::runtime_error("Failed to initialize glfw library");
+    }
+
+    // This flag prevents the window from showing, but is necessary because otherwise the openGL context has ownership
+    // over presentation on the window and Vulkan surface creation fails
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
+    window = glfwCreateWindow(1080, 720, "Vulkan App", NULL, NULL);
+
+    glfwSetCursorPosCallback(window, glfwCursorPositionCallback);
+    glfwSetKeyCallback(window, glfwKeyCallback);
+
+}
+
+void VulkanApp::selectPhysicalDevice()
+{
+    uint32_t physicalDeviceCount;
+
+    // Retrieve the physical devices (each single complete implementation of vulkan)
+    vkEnumeratePhysicalDevices(instance.get(), &physicalDeviceCount, nullptr);
+    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+    vkEnumeratePhysicalDevices(instance.get(), &physicalDeviceCount, physicalDevices.data());
+
+    // For the purposes of this app, I will just select my device manually (as I only have one)
+    physicalDevice = physicalDevices[0];
+
+}
 
 void VulkanApp::cleanup()
 {
-    resourceManager.destroy();
-    //computeShaderCleanup(&resourceManager);
-    vkDestroySurfaceKHR(instance, surface, NULL);
-    vkDestroyDevice(logicalDevice, nullptr);
-    if (enableValidationLayers)
-        DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-    vkDestroyInstance(instance, nullptr);
+    DestroyDebugUtilsMessengerEXT(instance.get(), debugMessenger, nullptr);
     glfwDestroyWindow(window);
+    resourceManager.destroy();
     glfwTerminate();
 }

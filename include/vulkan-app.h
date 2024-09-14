@@ -21,10 +21,6 @@ class VulkanApp {
     AppImageBundle albedo;
     AppImageBundle normal;
 
-    bool enableValidationLayers = true;
-    const std::vector<const char*> validationLayers = {
-        "VK_LAYER_KHRONOS_validation"
-    };
     VkDebugUtilsMessengerEXT debugMessenger;
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
@@ -35,12 +31,7 @@ class VulkanApp {
         glm::mat4 projMatrix;
     };
 
-    struct QueueFamilyIndices {
-        uint32_t graphics;
-        uint32_t compute;
-    };
-
-    QueueFamilyIndices queueIndices;
+    QueueFamilyIndices queueFamilyIndices;
 
     uint32_t windowWidth = 1080u;
     uint32_t windowHeight = 720u;
@@ -52,10 +43,10 @@ class VulkanApp {
 
     /* Vulkan objects*/
     struct GLFWwindow* window;
-    VkInstance instance;
+    AppInstance instance;
     VkPhysicalDevice physicalDevice;
-    VkDevice logicalDevice;
-    VkSurfaceKHR surface;
+    AppDevice logicalDevice;
+    AppSurface surface;
     AppSwapchain swapchain;
     AppImageBundle depthStencilImage;
     VkPipelineLayout pipelineLayout;
@@ -103,12 +94,8 @@ class VulkanApp {
 
     /* App inititalization methods */
     void setupDebugMessenger();
-    void initVulkanLoader();
     void createWindow();
-    void createInstance();
     void selectPhysicalDevice();
-    void setQueueIndices();
-    void createLogicalDeviceAndQueues();
     void tickTimer();
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
