@@ -9,18 +9,6 @@
 
 #define THROW(x,msg) if (x != VK_SUCCESS) throw std::runtime_error(msg);
 
-struct AppImageBundle {
-    VkImage image;
-    VkDeviceMemory memory;
-    VkImageView imageView;
-
-    void destroy(VkDevice device) {
-        vkDestroyImage(device, image, nullptr);
-        vkFreeMemory(device, memory, nullptr);
-        vkDestroyImageView(device, imageView, nullptr);
-    }
-};
-
 class VulkanApp {
     std::chrono::high_resolution_clock::time_point lastRenderTime;
     std::chrono::high_resolution_clock highResClock;
@@ -30,8 +18,8 @@ class VulkanApp {
     MeshManager meshManager;
     ResourceManager resourceManager;
 
-    AppImage2D albedo;
-    AppImage2D normal;
+    AppImageBundle albedo;
+    AppImageBundle normal;
 
     bool enableValidationLayers = true;
     const std::vector<const char*> validationLayers = {
@@ -68,18 +56,15 @@ class VulkanApp {
     VkPhysicalDevice physicalDevice;
     VkDevice logicalDevice;
     VkSurfaceKHR surface;
-    VkSwapchainKHR swapchain;
-    std::vector<VkImage> swapchainImages;
-    std::vector<VkImageView> swapchainImageViews;
-    std::vector<VkFramebuffer> swapchainFramebuffers;
-    AppImage2D depthStencilImage;
+    AppSwapchain swapchain;
+    AppImageBundle depthStencilImage;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
-    VkShaderModule vertexShaderModule;
-    VkShaderModule fragmentShaderModule;
+    AppShaderModule vertexShaderModule;
+    AppShaderModule fragmentShaderModule;
     VkPipeline colorGraphicsPipeline;
     VkPipeline depthGraphicsPipeline;
-    VkCommandPool commandPool;
+    AppCommandPool commandPool;
     VkCommandBuffer commandBuffer;
 
     // Queues to submit particular commands
@@ -87,18 +72,18 @@ class VulkanApp {
     VkQueue presentQueue;
     VkQueue computeQueue;
 
-    AppBuffer stagingVertexBuffer;
-    AppBuffer deviceVertexBuffer;
+    AppBufferBundle stagingVertexBuffer;
+    AppBufferBundle deviceVertexBuffer;
 
-    AppBuffer stagingIndexBuffer;
-    AppBuffer deviceIndexBuffer;
+    AppBufferBundle stagingIndexBuffer;
+    AppBufferBundle deviceIndexBuffer;
 
-    std::vector<AppBuffer> uniformBuffersVS;
+    std::vector<AppBufferBundle> uniformBuffersVS;
     VkDescriptorSetLayout pipelineDescriptorSetLayout;
     VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> uboDescriptorSets;
+    std::vector<VkDescriptorSet> descriptorSetsPerFrame;
 
-    VkSampler sampler;
+    AppSampler sampler;
 
     // Signal when an image is available
     VkSemaphore imageAvailableSemaphore;
@@ -115,7 +100,6 @@ class VulkanApp {
 
     /* App helper methods */
     bool isPhysicalDeviceSuitable(VkPhysicalDevice device);
-    static std::vector<char> readFile(const std::string filename);
 
     /* App inititalization methods */
     void setupDebugMessenger();
@@ -125,30 +109,7 @@ class VulkanApp {
     void selectPhysicalDevice();
     void setQueueIndices();
     void createLogicalDeviceAndQueues();
-    void createWindowSurface();
-    void createSwapchain();
-    void recreateSwapchain();
-    void cleanupSwapchain();
-    void createDepthStencilTexAndView();
-    void createImageViews();
-    void createGraphicsPipeline();
-    void createRenderPass();
-    void createShaderModules();
-    void createFramebuffers();
-    void createCommandPool();
-    void createCommandBuffer();
-    void createSyncObjects();
-    void createVertexBuffer();
-    void createIndexBuffer();
-    void createVSUniformBuffers();
-    void createDescriptorSetLayout();
-    void createDescriptorPool();
-    void createDescriptorSets();
-    void updateDescriptorSets();
-    void mapUBOs();
-    void updateUBO(uint32_t frame);
     void tickTimer();
-    void createSampler();
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
@@ -166,7 +127,6 @@ class VulkanApp {
     public:
     void init();
     void drawFrame(float deltaTime);
-    void updateVIBuffers();
     void renderLoop();
     void cleanup();
 

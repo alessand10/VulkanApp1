@@ -2,6 +2,7 @@
 #include "vulkan/vulkan.hpp"
 #include "resource-structs.h"
 #include <map>
+#include <list>
 
 /**
  * @class ResourceManager
@@ -14,9 +15,10 @@ class ResourceManager {
     public:
     class VulkanApp* app;
 
-    std::vector<VkImage> images;
-    std::vector<VkImageView> imageViews;
-    std::vector<VkDeviceMemory> imageMemory;
+    std::list<VkDeviceMemory> deviceMemorySet;
+
+    std::list<VkImage> images;
+    std::list<VkImageView> imageViews;
 
     void init(class VulkanApp* appRef);
     uint32_t getSuitableMemoryTypeIndex(VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags);
@@ -33,7 +35,11 @@ class ResourceManager {
      * 
      * @return The created image object
      */
-    AppImage2D createImage(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layers = 1U);
+    AppImage createImage(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layers = 1U);
+
+    AppImage addExistingImage(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layers, VkImageLayout layout, VkImage image);
+
+    void destroyImage(AppImage image);
 
     /**
      * @brief Creates an app-managed image view based on the image & template passed in
@@ -45,7 +51,8 @@ class ResourceManager {
      * @param layerCount The number of array layers that this image view will encompass
      * @param baseLayer The starting array layer that this image view will encompass
      */
-    void createImageView(AppImage2D &image, uint32_t layerCount = 1U, uint32_t baseLayer = 0U);
+    AppImageView createImageView(AppImage &image, uint32_t layerCount = 1U, uint32_t baseLayer = 0U);
+    void destroyImageView(AppImageView &imageView);
 
     /**
      * @brief Allocates memory for an app image
@@ -55,8 +62,9 @@ class ResourceManager {
 
      * @param image The app image object to allocate memory for
      */
-    void allocateImageMemory(AppImage2D &image);
-    void bindImageToMemory(AppImage2D &image);
+    AppDeviceMemory allocateImageMemory(AppImage &image);
+    void bindImageToMemory(AppImage &image, AppDeviceMemory &imageMemory);
+    void destroyDeviceMemory(AppDeviceMemory deviceMemory);
 
 
     /**
@@ -71,7 +79,7 @@ class ResourceManager {
      * 
      * @return The created image object
      */
-    AppImage2D createImageAll(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount = 1U);
+    AppImageBundle createImageAll(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount = 1U);
 
     /**
      * @brief Transitions an image from its current layout to a new layout
@@ -79,7 +87,7 @@ class ResourceManager {
      * @param image The image to transition the layout of
      * @param newLayout The layout to transition the new image to
      */
-    void transitionImageLayout(AppImage2D &image, VkImageLayout newLayout);
+    void transitionImageLayout(AppImage &image, VkImageLayout newLayout);
 
     /**
      * @brief Create an app-managed image view based on the image & template passed in
@@ -90,17 +98,16 @@ class ResourceManager {
      * @param stagingImage The staging image to copy data from
      * @param deviceLocalImage The device-local image to copy data to
      */
-    void pushStagingImage(AppImage2D &stagingImage, AppImage2D &deviceLocalImage);
+    void pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage);
 
-    std::vector<VkBuffer> buffers = {};
-    std::vector<VkDeviceMemory> bufferMemory = {};
+    std::list<VkBuffer> buffers = {};
 
     AppBuffer createBuffer(AppBufferTemplate bufferTemplate, size_t size);
-    void allocateBufferMemory(AppBuffer &appBuffer);
-    void bindBufferToMemory(AppBuffer &appBuffer);
-    AppBuffer createBufferAll(AppBufferTemplate bufferTemplate, size_t size);
+    AppDeviceMemory allocateBufferMemory(AppBuffer &appBuffer);
+    void bindBufferToMemory(AppBuffer &appBuffer, AppDeviceMemory &deviceMemory);
+    AppBufferBundle createBufferAll(AppBufferTemplate bufferTemplate, size_t size);
     void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer);
-    void copyDataToStagingBuffer(AppBuffer &stagingBuffer, void* memory, size_t size);
+    void copyDataToStagingBuffer(AppDeviceMemory &stagingBufferMemory, void* memory, size_t size);
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
     std::vector<VkDescriptorPool> descriptorPools;
@@ -109,9 +116,53 @@ class ResourceManager {
     VkDescriptorSetLayout createDescriptorSetLayout(std::vector<AppDescriptorItemTemplate> descriptorItems);
     VkDescriptorPool createDescriptorPool(uint32_t maxSetsCount, std::map<AppDescriptorItemTemplate, uint32_t> descriptorTypeCounts);
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool);
-    void updateImageDescriptor(AppImage2D image, VkDescriptorSet set, uint32_t binding, AppDescriptorItemTemplate itemTemplate, VkSampler sampler = nullptr);
+    void updateImageDescriptor(AppImageView imageView, VkDescriptorSet set, uint32_t binding, AppDescriptorItemTemplate itemTemplate, AppSampler sampler = AppSampler{});
     void updateBufferDescriptor(VkDescriptorSet set, VkBuffer buffer, uint32_t size,  uint32_t binding, AppDescriptorItemTemplate itemTemplate);
 
-    void destroy();
 
+    std::vector<VkRenderPass> renderPasses;
+
+    /**
+     * @brief Creates an app-managed render pass 
+     * 
+     * @param attachments A vector of attachments that will be used throughout all subpasses. Each attachment is of the form {VkImageView imageView, AppAttachmentTemplate}
+     * @param subpasses A vector of subpasses for this render pass. Each subpass consists of a vector of attachments references for the subpass: { subpass 1: [{AttachmentIndex, Image Layout},{Attachment Index, Image Layout}], subpass 2: ... }
+     */
+    VkRenderPass createRenderPass(std::vector<AppAttachment> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies);
+
+    std::vector<VkShaderModule> shaderModules;
+
+    AppShaderModule createShaderModule(std::string path, VkShaderStageFlagBits shaderStageFlags);
+
+    std::vector<VkPipeline> pipelines;
+    std::vector<VkPipelineLayout> pipelineLayouts;
+
+    VkPipelineLayout createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts);
+    VkPipeline createGraphicsPipeline(std::vector<AppShaderModule> shaderModules, VkPipelineLayout pipelineLayout, VkRenderPass renderPass);
+
+    std::vector<VkFence> fences;
+    std::vector<VkSemaphore> semaphores;
+
+    VkFence createFence(bool signaled);
+    VkSemaphore createSemaphore();
+
+    std::list<VkSwapchainKHR> swapchains;
+
+    AppSwapchain createSwapchain();
+    void destroySwapchain(AppSwapchain swapchain);
+
+    std::list<VkFramebuffer> frameBuffers;
+
+    AppFramebuffer createFramebuffer(VkRenderPass renderPass, std::vector<VkImageView> attachmentViews);
+
+    std::list<VkSampler> samplers;
+
+    AppSampler createSampler(AppSamplerTemplate t);
+
+    std::list<VkCommandPool> commandPools;
+
+    AppCommandPool createCommandPool(uint32_t queueFamilyIndex);
+    VkCommandBuffer allocateCommandBuffer(AppCommandPool pool, VkCommandBufferLevel level);
+
+    void destroy();
 };

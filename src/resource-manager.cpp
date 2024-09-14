@@ -1,5 +1,6 @@
 #include "resource-manager.h"
 #include "vulkan-app.h"
+#include "utilities.h"
 
 void ResourceManager::init(VulkanApp *appRef)
 {
@@ -23,10 +24,10 @@ uint32_t ResourceManager::getSuitableMemoryTypeIndex(VkMemoryRequirements memory
 }
 
 
-AppImage2D ResourceManager::createImage(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount)
+AppImage ResourceManager::createImage(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount)
 {
 
-    AppImage2D returnImage{};
+    AppImage returnImage{};
     // Instantiate image create info from template
     VkImageCreateInfo createInfo{ getImageCreateInfoFromTemplate(appImageTemplate) };
 
@@ -36,16 +37,14 @@ AppImage2D ResourceManager::createImage(uint32_t width, uint32_t height, AppImag
     createInfo.arrayLayers = layerCount;
 
     // Create a new image object in the vector of images
-    images.push_back(VkImage{});
+    images.push_front(VkImage{});
+    returnImage.setRef(images.begin());
 
     // Attempt to create the image
-    THROW(vkCreateImage(app->logicalDevice, &createInfo, nullptr, &images.back()), "Failed to create image");
+    THROW(vkCreateImage(app->logicalDevice, &createInfo, nullptr, &images.front()), "Failed to create image");
 
-    returnImage.image = images.back();
     returnImage.imageCreationTemplate = appImageTemplate;
     returnImage.layerCount = layerCount;
-    returnImage.memory = VK_NULL_HANDLE;
-    returnImage.view = VK_NULL_HANDLE;
     returnImage.width = width;
     returnImage.height = height;
     returnImage.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -53,22 +52,59 @@ AppImage2D ResourceManager::createImage(uint32_t width, uint32_t height, AppImag
     return returnImage;
 }
 
-void ResourceManager::createImageView(AppImage2D &image, uint32_t layerCount, uint32_t baseLayer)
+AppImage ResourceManager::addExistingImage(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layers, VkImageLayout layout, VkImage image)
 {
+    AppImage returnImage{};
+    images.push_front(image);
+    returnImage.setRef(images.begin());
+    returnImage.imageCreationTemplate = appImageTemplate;
+    returnImage.layerCount = layers;
+    returnImage.width = width;
+    returnImage.imageLayout = layout;
+    returnImage.height = height;
+    returnImage.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    return returnImage;
+}
+
+void ResourceManager::destroyImage(AppImage image)
+{
+    // Destroy the Vulkan resource
+    vkDestroyImage(app->logicalDevice, image.get(), nullptr);
+
+    // Destroy the reference
+    images.erase(image.getRef());
+}
+
+AppImageView ResourceManager::createImageView(AppImage &image, uint32_t layerCount, uint32_t baseLayer)
+{
+    AppImageView returnView {};
+    returnView.imageCreationTemplate = image.imageCreationTemplate;
+
     VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(image.imageCreationTemplate) };
-    createInfo.image = image.image;
+    createInfo.image = image.get();
     createInfo.subresourceRange.layerCount = layerCount;
     createInfo.subresourceRange.baseArrayLayer = baseLayer;
 
-    imageViews.push_back(VkImageView{});
+    imageViews.push_front(VkImageView{});
+    returnView.setRef(imageViews.begin());
 
-    THROW(vkCreateImageView(app->logicalDevice, &createInfo, nullptr, &imageViews.back()), "Failed to create image view");
-
-    image.view = imageViews.back();
+    THROW(vkCreateImageView(app->logicalDevice, &createInfo, nullptr, &imageViews.front()), "Failed to create image view");
+    return returnView;
 }
 
-void ResourceManager::allocateImageMemory(AppImage2D &image)
+void ResourceManager::destroyImageView(AppImageView &imageView)
 {
+    // Destroy the view
+    vkDestroyImageView(app->logicalDevice, imageView.get(), nullptr);
+
+    // Destroy the node
+    imageViews.erase(imageView.getRef());
+}
+
+AppDeviceMemory ResourceManager::allocateImageMemory(AppImage &image)
+{
+    AppDeviceMemory returnMemory{};
     VkMemoryPropertyFlags memoryPropertyFlags = 0U;
 
     switch (image.imageCreationTemplate) {
@@ -84,7 +120,7 @@ void ResourceManager::allocateImageMemory(AppImage2D &image)
     }
 
     VkMemoryRequirements imageMemoryRequirements;
-    vkGetImageMemoryRequirements(app->logicalDevice, image.image, &imageMemoryRequirements);
+    vkGetImageMemoryRequirements(app->logicalDevice, image.get(), &imageMemoryRequirements);
     uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(imageMemoryRequirements, memoryPropertyFlags);
 
     VkMemoryAllocateInfo allocInfo{};
@@ -93,29 +129,35 @@ void ResourceManager::allocateImageMemory(AppImage2D &image)
     allocInfo.memoryTypeIndex = memoryTypeIndex;
     allocInfo.allocationSize = imageMemoryRequirements.size;
 
-    imageMemory.push_back(VkDeviceMemory{});
+    deviceMemorySet.push_front(VkDeviceMemory{});
+    returnMemory.setRef(deviceMemorySet.begin());
 
-    THROW(vkAllocateMemory(app->logicalDevice, &allocInfo, nullptr, &imageMemory.back()), "Failed to allocate image memory");
-
-    image.memory = imageMemory.back();
+    THROW(vkAllocateMemory(app->logicalDevice, &allocInfo, nullptr, &deviceMemorySet.front()), "Failed to allocate image memory");
+    return returnMemory;
 }
 
-void ResourceManager::bindImageToMemory(AppImage2D &image)
+void ResourceManager::bindImageToMemory(AppImage &image, AppDeviceMemory &deviceMemory)
 {
-    THROW(vkBindImageMemory(app->logicalDevice, image.image, image.memory, 0U), "Failed to bind image to memory");
+    THROW(vkBindImageMemory(app->logicalDevice, image.get(), deviceMemory.get(), 0U), "Failed to bind image to memory");
 }
 
-AppImage2D ResourceManager::createImageAll(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount)
+void ResourceManager::destroyDeviceMemory(AppDeviceMemory deviceMemory)
 {
-    AppImage2D image;
-    image = createImage(width, height, appImageTemplate, layerCount);
-    allocateImageMemory(image);
-    bindImageToMemory(image);
-    createImageView(image);
-    return image;
+    vkFreeMemory(app->logicalDevice, deviceMemory.get(), nullptr);
+    deviceMemorySet.erase(deviceMemory.getRef());
 }
 
-void ResourceManager::transitionImageLayout(AppImage2D &image, VkImageLayout newLayout)
+AppImageBundle ResourceManager::createImageAll(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount)
+{
+    AppImageBundle bundle {};
+    bundle.image = createImage(width, height, appImageTemplate, layerCount);
+    bundle.deviceMemory = allocateImageMemory(bundle.image);
+    bindImageToMemory(bundle.image, bundle.deviceMemory);
+    bundle.imageView = createImageView(bundle.image);
+    return bundle;
+}
+
+void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout)
 {
     VkImageMemoryBarrier layoutTransitionBarrier{};
     layoutTransitionBarrier.pNext = nullptr;
@@ -126,7 +168,7 @@ void ResourceManager::transitionImageLayout(AppImage2D &image, VkImageLayout new
     layoutTransitionBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     layoutTransitionBarrier.srcAccessMask = VK_ACCESS_NONE; // We are not waiting for anything to occur prior to this barrier
     layoutTransitionBarrier.dstAccessMask = VK_ACCESS_NONE; // Nothing is awaiting this barrier
-    layoutTransitionBarrier.image = image.image;
+    layoutTransitionBarrier.image = image.get();
     layoutTransitionBarrier.oldLayout = image.imageLayout;
     layoutTransitionBarrier.newLayout = newLayout;
 
@@ -170,7 +212,7 @@ void ResourceManager::transitionImageLayout(AppImage2D &image, VkImageLayout new
     image.imageLayout = newLayout;
 }
 
-void ResourceManager::pushStagingImage(AppImage2D &stagingImage, AppImage2D &deviceLocalImage)
+void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage)
 {
     transitionImageLayout(stagingImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     transitionImageLayout(deviceLocalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -204,7 +246,7 @@ void ResourceManager::pushStagingImage(AppImage2D &stagingImage, AppImage2D &dev
     imgCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 0U, 1U};
 
     vkBeginCommandBuffer(app->commandBuffer, &beginInfo);
-    vkCmdCopyImage(app->commandBuffer, stagingImage.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, deviceLocalImage.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1U, &imgCopy);
+    vkCmdCopyImage(app->commandBuffer, stagingImage.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, deviceLocalImage.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1U, &imgCopy);
     vkEndCommandBuffer(app->commandBuffer);
 
     VkFenceCreateInfo transferCompleteFenceInfo{};
@@ -232,16 +274,18 @@ AppBuffer ResourceManager::createBuffer(AppBufferTemplate bufferTemplate, size_t
     VkBufferCreateInfo createInfo{getBufferCreateInfoFromTemplate(bufferTemplate)};
     createInfo.size = size;
 
-    buffers.push_back(VkBuffer{});
+    buffers.push_front(VkBuffer{});
+    returnBuffer.setRef(buffers.begin());
 
-    THROW(vkCreateBuffer(app->logicalDevice, &createInfo, nullptr, &buffers.back()), "Failed to create buffer"); 
-    returnBuffer.buffer = buffers.back();
+    THROW(vkCreateBuffer(app->logicalDevice, &createInfo, nullptr, &buffers.front()), "Failed to create buffer"); 
 
     return returnBuffer;
 }
 
-void ResourceManager::allocateBufferMemory(AppBuffer &appBuffer)
+AppDeviceMemory ResourceManager::allocateBufferMemory(AppBuffer &appBuffer)
 {
+    AppDeviceMemory returnDeviceMemory{};
+    
     VkMemoryPropertyFlags memoryPropertyFlags = 0U;
 
     switch (appBuffer.appBufferTemplate) {
@@ -257,7 +301,7 @@ void ResourceManager::allocateBufferMemory(AppBuffer &appBuffer)
     };
 
     VkMemoryRequirements bufferMemoryRequirements;
-    vkGetBufferMemoryRequirements(app->logicalDevice, appBuffer.buffer, &bufferMemoryRequirements);
+    vkGetBufferMemoryRequirements(app->logicalDevice, appBuffer.get(), &bufferMemoryRequirements);
     uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(bufferMemoryRequirements, memoryPropertyFlags);
 
     VkMemoryAllocateInfo memoryAllocateInfo {};
@@ -266,25 +310,25 @@ void ResourceManager::allocateBufferMemory(AppBuffer &appBuffer)
     memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
     memoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
 
-    bufferMemory.push_back(VkDeviceMemory{});
+    deviceMemorySet.push_front(VkDeviceMemory{});
+    returnDeviceMemory.setRef(deviceMemorySet.begin());
 
-    THROW(vkAllocateMemory(app->logicalDevice, &memoryAllocateInfo, nullptr, &bufferMemory.back()), "Failed to allocate buffer memory");
-
-    appBuffer.memory = bufferMemory.back();
+    THROW(vkAllocateMemory(app->logicalDevice, &memoryAllocateInfo, nullptr, &deviceMemorySet.front()), "Failed to allocate buffer memory");
+    return returnDeviceMemory;
 }
 
-void ResourceManager::bindBufferToMemory(AppBuffer &appBuffer)
+void ResourceManager::bindBufferToMemory(AppBuffer &buffer, AppDeviceMemory &deviceMemory)
 {
-    THROW(vkBindBufferMemory(app->logicalDevice, appBuffer.buffer, appBuffer.memory, 0U), "Failed to bind buffer to memory");
+    THROW(vkBindBufferMemory(app->logicalDevice, buffer.get(), deviceMemory.get(), 0U), "Failed to bind buffer to memory");
 }
 
-AppBuffer ResourceManager::createBufferAll(AppBufferTemplate bufferTemplate, size_t size)
+AppBufferBundle ResourceManager::createBufferAll(AppBufferTemplate bufferTemplate, size_t size)
 {
-    AppBuffer buffer{};
-    buffer = createBuffer(bufferTemplate, size);
-    allocateBufferMemory(buffer);
-    bindBufferToMemory(buffer);
-    return buffer;
+    AppBufferBundle bufferBundle {};
+    bufferBundle.buffer = createBuffer(bufferTemplate, size);
+    bufferBundle.deviceMemory = allocateBufferMemory(bufferBundle.buffer);
+    bindBufferToMemory(bufferBundle.buffer, bufferBundle.deviceMemory);
+    return bufferBundle;
 }
 
 void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer)
@@ -313,7 +357,7 @@ void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &dev
     bufferCopy.size = stagingBuffer.size;
 
     vkBeginCommandBuffer(app->commandBuffer, &beginInfo);
-    vkCmdCopyBuffer(app->commandBuffer, stagingBuffer.buffer, deviceLocalBuffer.buffer, 1U, &bufferCopy);
+    vkCmdCopyBuffer(app->commandBuffer, stagingBuffer.get(), deviceLocalBuffer.get(), 1U, &bufferCopy);
     vkEndCommandBuffer(app->commandBuffer);
 
     VkFenceCreateInfo transferCompleteFenceInfo{};
@@ -332,12 +376,12 @@ void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &dev
     vkDestroyFence(app->logicalDevice, transferCompleteFence, nullptr);
 }
 
-void ResourceManager::copyDataToStagingBuffer(AppBuffer &stagingBuffer, void *data, size_t size)
+void ResourceManager::copyDataToStagingBuffer(AppDeviceMemory &stagingBufferMemory, void *data, size_t size)
 {
     void* mappedMemory = nullptr;
-    vkMapMemory(app->logicalDevice, stagingBuffer.memory, 0U, size, 0U, &mappedMemory);
+    vkMapMemory(app->logicalDevice, stagingBufferMemory.get(), 0U, size, 0U, &mappedMemory);
     memcpy(mappedMemory, data, size);
-    vkUnmapMemory(app->logicalDevice, stagingBuffer.memory);
+    vkUnmapMemory(app->logicalDevice, stagingBufferMemory.get());
 }
 
 VkDescriptorSetLayout ResourceManager::createDescriptorSetLayout(std::vector<AppDescriptorItemTemplate> descriptorItems)
@@ -421,12 +465,12 @@ VkDescriptorSet ResourceManager::allocateDescriptorSet(VkDescriptorSetLayout des
     return descriptorSets.back();
 }
 
-void ResourceManager::updateImageDescriptor(AppImage2D image, VkDescriptorSet set, uint32_t binding, AppDescriptorItemTemplate itemTemplate, VkSampler sampler)
+void ResourceManager::updateImageDescriptor(AppImageView imageView, VkDescriptorSet set, uint32_t binding, AppDescriptorItemTemplate itemTemplate, AppSampler sampler)
 {   
     VkDescriptorImageInfo imageInfo{};
-    imageInfo.imageLayout = getImageLayoutFromTemplate(image.imageCreationTemplate);
-    imageInfo.imageView = image.view;
-    imageInfo.sampler = sampler;
+    imageInfo.imageLayout = getImageLayoutFromTemplate(imageView.imageCreationTemplate);
+    imageInfo.imageView = imageView.get();
+    imageInfo.sampler = sampler.get();
 
     VkWriteDescriptorSet descriptorWriteImg{};
     descriptorWriteImg.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -465,13 +509,437 @@ void ResourceManager::updateBufferDescriptor(VkDescriptorSet set, VkBuffer buffe
     vkUpdateDescriptorSets(app->logicalDevice, 1U, &descriptorWriteBuffer, 0U, nullptr);
 }
 
+VkRenderPass ResourceManager::createRenderPass(std::vector<AppAttachment> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies) {
+    VkRenderPassCreateInfo renderPassInfo{};
+    std::vector<VkAttachmentDescription> attachmentDescriptions = {};
+    std::vector<VkSubpassDescription> subpassDescriptions = {};
+
+    // Each std::vector<VkAttachmentReference> element is for a separate subpass
+    std::vector<std::vector<VkAttachmentReference>> colorAttachmentReferences = {};
+    std::vector<std::vector<VkAttachmentReference>> depthStencilAttachmentReferences = {};
+    
+    for (AppAttachment attachment : attachments) {
+        attachmentDescriptions.push_back(getAttachmentDescriptionFromTemplate(attachment.attachmentTemplate));
+    }
+
+    for (AppSubpass subpass : subpasses) {
+        colorAttachmentReferences.push_back(std::vector<VkAttachmentReference>{});
+        depthStencilAttachmentReferences.push_back(std::vector<VkAttachmentReference>{});
+        subpassDescriptions.push_back(VkSubpassDescription{});
+
+        for (AppSubpassAttachmentRef ref : subpass.attachmentRefs) {
+            AttachmentType attachmentType = getAttachmentTypeFromTemplate(attachments[ref.attachmentIndex].attachmentTemplate);
+            if (attachmentType == AttachmentType::COLOR) {
+                colorAttachmentReferences.back().push_back(VkAttachmentReference{});
+                colorAttachmentReferences.back().back().attachment = ref.attachmentIndex;
+                colorAttachmentReferences.back().back().layout = ref.imageLayout;
+            }
+            else if (attachmentType == AttachmentType::DEPTH_STENCIL) {
+                depthStencilAttachmentReferences.back().push_back(VkAttachmentReference{});
+                depthStencilAttachmentReferences.back().back().attachment = ref.attachmentIndex;
+                depthStencilAttachmentReferences.back().back().layout = ref.imageLayout;
+            }
+        }
+
+        subpassDescriptions.back().colorAttachmentCount = colorAttachmentReferences.size();
+        subpassDescriptions.back().pColorAttachments = colorAttachmentReferences.back().size() == 0 ? nullptr : colorAttachmentReferences.back().data();
+        subpassDescriptions.back().flags = 0U;
+        subpassDescriptions.back().pDepthStencilAttachment = depthStencilAttachmentReferences.back().size() == 0 ? nullptr : &(depthStencilAttachmentReferences.back()[0]);
+
+    }
+
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassInfo.pNext = nullptr;
+    renderPassInfo.attachmentCount = attachments.size();
+    renderPassInfo.pAttachments = attachmentDescriptions.data();
+    renderPassInfo.subpassCount = subpassDescriptions.size();
+    renderPassInfo.pSubpasses = subpassDescriptions.data();
+    renderPassInfo.dependencyCount = subpassDependencies.size();
+    renderPassInfo.pDependencies = subpassDependencies.data();
+    renderPassInfo.flags = 0U;
+
+    renderPasses.push_back(VkRenderPass{});
+    THROW(vkCreateRenderPass(app->logicalDevice, &renderPassInfo, nullptr, &renderPasses.back()), "Failed to create render pass");
+
+    return renderPasses.back();
+}
+
+AppShaderModule ResourceManager::createShaderModule(std::string path, VkShaderStageFlagBits shaderStageFlags)
+{
+    std::vector<char> shaderFile = readFile(path.data());
+
+    shaderModules.push_back(VkShaderModule{});
+
+    VkShaderModuleCreateInfo shaderModuleCreateInfo{};
+    shaderModuleCreateInfo.codeSize = shaderFile.size();
+    shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(shaderFile.data());
+
+    if (vkCreateShaderModule(app->logicalDevice, &shaderModuleCreateInfo, NULL, &shaderModules.back()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create vertex shader");
+    }
+
+    return AppShaderModule{shaderModules.back(), shaderStageFlags};
+}
+
+VkPipelineLayout ResourceManager::createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts)
+{
+    // Create the pipeline layout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size(); // Optional
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data(); // Optional
+    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+    pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+
+    pipelineLayouts.push_back(VkPipelineLayout{});
+
+    THROW(vkCreatePipelineLayout(app->logicalDevice, &pipelineLayoutInfo, NULL, &pipelineLayouts.back()), "Failed to create pipeline layout")
+
+    return pipelineLayouts.back();
+}
+
+VkPipeline ResourceManager::createGraphicsPipeline(std::vector<AppShaderModule> shaderModules, VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
+{
+    // Configure vertex buffer binding
+
+    VkVertexInputBindingDescription vertBindDesc{};
+    vertBindDesc.binding = 0;
+    vertBindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    vertBindDesc.stride = sizeof(Vertex);
+
+    VkVertexInputAttributeDescription attributeDesc[3] = {
+        // Position
+        {
+            0U, // Location, the shader input location (layout(location = 0) in vec3 position)
+            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
+            VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the position,
+            0U // Offset, this is the first attribute so use an offset of 0
+        },
+
+        // Normal
+        {
+            1U, // Location, the shader input location (layout(location = 1) in vec3 normal)
+            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
+            VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the normal,
+            12U // Offset, we use 12 bytes since position is made up of 3 x 4-byte values
+        },
+
+        // Texcoord
+        {
+            2U, // Location, the shader input location (layout(location = 2) in vec2 texCoord)
+            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
+            VK_FORMAT_R32G32_SFLOAT, // Format, we use a Float2 for the texture coordinate,
+            24U // Offset, we use 24 bytes since position & normal take up 6 x 4-byte values
+        }
+    };
+
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &vertBindDesc; 
+    vertexInputInfo.vertexAttributeDescriptionCount = 3;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDesc;
+
+    // Configure some input assembler setup
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    // Configure the viewport
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) app->windowWidth;
+    viewport.height = (float) app->windowHeight;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    // Configure the scissor (can be used to discard rasterizer pixels)
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent.width = app->windowWidth;
+    scissor.extent.height = app->windowHeight;
+
+    // Since we are dynamically specifying the viewport and scissor struct, theres no need to specify them in the viewport
+    // state. We will set these values up later at draw time.
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+    viewportState.pScissors = &scissor;
+    viewportState.pViewports = &viewport;
+    viewportState.flags = 0U;
+    viewportState.pNext = nullptr;
+
+    // Set up some rasterizer values
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+    rasterizer.depthBiasClamp = 0.0f; // Optional
+    rasterizer.depthBiasSlopeFactor = 0.0f; // Optional
+
+    // Configure some multisampling
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisampling.minSampleShading = 1.0f; // Optional
+    multisampling.pSampleMask = nullptr; // Optional
+    multisampling.alphaToCoverageEnable = VK_FALSE; // Optional
+    multisampling.alphaToOneEnable = VK_FALSE; // Optional
+
+    // Configure the blend attachment state
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
+
+    // Configure colour blending
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY; // Optional
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f; // Optional
+    colorBlending.blendConstants[1] = 0.0f; // Optional
+    colorBlending.blendConstants[2] = 0.0f; // Optional
+    colorBlending.blendConstants[3] = 0.0f; // Optional
+
+
+    std::vector<VkPipelineShaderStageCreateInfo> shaderStageCreateInfos = {};
+    for (AppShaderModule appShaderModule : shaderModules) {
+        shaderStageCreateInfos.push_back(VkPipelineShaderStageCreateInfo{});
+        shaderStageCreateInfos.back().sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStageCreateInfos.back().pNext = nullptr;
+        shaderStageCreateInfos.back().flags = 0U;
+        shaderStageCreateInfos.back().module = appShaderModule.shaderModule;
+        shaderStageCreateInfos.back().pName = "main";
+        shaderStageCreateInfos.back().stage = appShaderModule.shaderStage;
+        shaderStageCreateInfos.back().pSpecializationInfo = nullptr;
+    }
+
+    VkPipelineDepthStencilStateCreateInfo dsStateCreateInfo{};
+    dsStateCreateInfo.pNext = nullptr;
+    dsStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    dsStateCreateInfo.depthTestEnable = true;
+    dsStateCreateInfo.stencilTestEnable = false;
+    dsStateCreateInfo.maxDepthBounds = 1.f;
+    dsStateCreateInfo.minDepthBounds = 0.f;
+    dsStateCreateInfo.depthWriteEnable = true;
+    dsStateCreateInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+
+    VkGraphicsPipelineCreateInfo colorSubpassPipelineInfo{};
+    colorSubpassPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    colorSubpassPipelineInfo.stageCount = shaderStageCreateInfos.size();
+    colorSubpassPipelineInfo.pStages = shaderStageCreateInfos.data();
+    colorSubpassPipelineInfo.pVertexInputState = &vertexInputInfo;
+    colorSubpassPipelineInfo.pInputAssemblyState = &inputAssembly;
+    colorSubpassPipelineInfo.pViewportState = &viewportState;
+    colorSubpassPipelineInfo.pRasterizationState = &rasterizer;
+    colorSubpassPipelineInfo.pMultisampleState = &multisampling;
+    colorSubpassPipelineInfo.pDepthStencilState = &dsStateCreateInfo; // Optional
+    colorSubpassPipelineInfo.pColorBlendState = &colorBlending;
+    colorSubpassPipelineInfo.pDynamicState = nullptr;
+    colorSubpassPipelineInfo.layout = pipelineLayout;
+    colorSubpassPipelineInfo.renderPass = renderPass;
+    colorSubpassPipelineInfo.subpass = 0;
+    colorSubpassPipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+    colorSubpassPipelineInfo.basePipelineIndex = -1; // Optional
+    
+    pipelines.push_back(VkPipeline{});
+
+    THROW(vkCreateGraphicsPipelines(app->logicalDevice, VK_NULL_HANDLE, 1, &colorSubpassPipelineInfo, NULL, &pipelines.back()), "Failed to create graphics pipeline");
+
+    return pipelines.back();
+}
+
+VkFence ResourceManager::createFence(bool signaled)
+{
+    fences.push_back(VkFence{});
+
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = signaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0U;
+
+    THROW(vkCreateFence(app->logicalDevice, &fenceInfo, NULL, &fences.back()), "Failed to create fence");
+    return fences.back();
+}
+
+VkSemaphore ResourceManager::createSemaphore()
+{
+    semaphores.push_back(VkSemaphore{});
+
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    THROW(vkCreateSemaphore(app->logicalDevice, &semaphoreInfo, NULL, &semaphores.back()), "Failed to create semaphore");
+    return semaphores.back();
+}
+
+AppSwapchain ResourceManager::createSwapchain()
+{
+    AppSwapchain appSwapchain{};
+
+    VkSurfaceCapabilitiesKHR surfaceCapabilities{};
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(app->physicalDevice, app->surface, &surfaceCapabilities);
+
+    VkSwapchainCreateInfoKHR swapchainCreateInfo{};
+    swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    swapchainCreateInfo.surface = app->surface;
+    swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
+    swapchainCreateInfo.clipped = VK_FALSE;
+    swapchainCreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainCreateInfo.imageArrayLayers = 1;
+    swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    swapchainCreateInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    swapchainCreateInfo.imageFormat = VK_FORMAT_B8G8R8A8_SRGB;
+    swapchainCreateInfo.imageExtent.height = app->windowHeight;
+    swapchainCreateInfo.imageExtent.width = app->windowWidth;
+    swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    swapchainCreateInfo.minImageCount = surfaceCapabilities.minImageCount + 1;
+    swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
+    swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    swapchainCreateInfo.pNext = NULL;
+
+    // ---- This is a critical section, only one thread should ever be in this section as a race condition may occur ----
+    swapchains.push_front(VkSwapchainKHR{});
+    appSwapchain.setRef(swapchains.begin());
+    // ---- End of critical section
+
+
+    THROW(vkCreateSwapchainKHR(app->logicalDevice, &swapchainCreateInfo, NULL, &swapchains.front()), "Failed to create swapchain");
+    uint32_t swapchainImageCount = 0;
+
+    // Store all swapchain images
+    THROW(vkGetSwapchainImagesKHR(app->logicalDevice, swapchains.front(), &swapchainImageCount, NULL), "Failed to retrieve swapchain images");
+    std::vector<VkImage> swapchainImages(swapchainImageCount);
+
+    vkGetSwapchainImagesKHR(app->logicalDevice, appSwapchain.get(), &swapchainImageCount, swapchainImages.data());
+
+    for (VkImage image : swapchainImages) {
+        AppImage swapchainImage = addExistingImage(app->windowWidth, app->windowHeight, AppImageTemplate::SWAPCHAIN_FORMAT, 1U, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, image);
+        appSwapchain.swapchainImages.push_back(swapchainImage);
+        appSwapchain.swapchainImageViews.push_back(createImageView(appSwapchain.swapchainImages.back()));
+    }
+
+    app->maxFramesInFlight = swapchainImageCount;
+
+    return appSwapchain;
+}
+
+void ResourceManager::destroySwapchain(AppSwapchain swapchain)
+{
+    // Destroy the created image views, and delete the images (which will themselves be destroyed when destroying the swapchain)
+    for (uint32_t index = 0 ; index < swapchain.swapchainImages.size() ; index++){
+        vkDestroyImageView(app->logicalDevice, swapchain.swapchainImageViews[index].get(), nullptr);
+        imageViews.erase(swapchain.swapchainImageViews[index].getRef());
+        images.erase(swapchain.swapchainImages[index].getRef());
+
+        vkDestroyFramebuffer(app->logicalDevice, swapchain.framebuffers[index].get(), nullptr);
+        frameBuffers.erase(swapchain.framebuffers[index].getRef());
+
+    }
+
+    // Destroy the swapchain Vulkan resource
+    vkDestroySwapchainKHR(app->logicalDevice, swapchain.get(), nullptr);
+
+    // Remove this swapchain from the list
+    swapchains.erase(swapchain.getRef());
+}
+
+AppFramebuffer ResourceManager::createFramebuffer(VkRenderPass renderPass, std::vector<VkImageView> attachmentViews)
+{
+    AppFramebuffer returnFramebuffer{};
+    VkFramebufferCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    createInfo.renderPass = renderPass;
+    createInfo.attachmentCount = attachmentViews.size();
+    createInfo.pAttachments = attachmentViews.data();
+    createInfo.width = app->windowWidth;
+    createInfo.height = app->windowHeight;
+    createInfo.layers = 1;
+    
+    frameBuffers.push_front(VkFramebuffer{});
+    returnFramebuffer.setRef(frameBuffers.begin());
+
+    THROW(vkCreateFramebuffer(app->logicalDevice, &createInfo, NULL, &frameBuffers.front()), "Failed to create framebuffer");
+
+    return returnFramebuffer;
+}
+
+AppSampler ResourceManager::createSampler(AppSamplerTemplate t)
+{
+    AppSampler returnSampler;
+
+    VkSamplerCreateInfo createInfo{getSamplerCreateInfoFromTemplate(t)};
+
+    samplers.push_front({});
+    returnSampler.setRef(samplers.begin());
+
+    THROW(vkCreateSampler(app->logicalDevice, &createInfo, nullptr, &samplers.front()), "Failed to create sampler");
+
+    return returnSampler;
+}
+
+AppCommandPool ResourceManager::createCommandPool(uint32_t queueFamilyIndex)
+{
+    AppCommandPool commandPool{};
+    commandPool.queueFamilyIndex = queueFamilyIndex;
+
+    VkCommandPoolCreateInfo createInfo{};
+    createInfo.pNext = nullptr;
+    createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    createInfo.queueFamilyIndex = queueFamilyIndex;
+
+    commandPools.push_front({});
+    commandPool.setRef(commandPools.begin());
+
+    THROW(vkCreateCommandPool(app->logicalDevice, &createInfo, nullptr, &commandPools.front()), "Failed to create command pool");
+    
+    return commandPool;
+}
+
+VkCommandBuffer ResourceManager::allocateCommandBuffer(AppCommandPool pool, VkCommandBufferLevel level)
+{
+    VkCommandBuffer buffer;
+    VkCommandBufferAllocateInfo allocInfo{};
+
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.pNext = nullptr;
+    allocInfo.level = level;
+    allocInfo.commandPool = pool.get();
+    allocInfo.commandBufferCount = 1U;
+
+   THROW(vkAllocateCommandBuffers(app->logicalDevice, &allocInfo, &buffer), "Failed to allocate command buffer");
+
+   return buffer;
+}
+
 void ResourceManager::destroy()
 {
+    destroySwapchain(app->swapchain);
+
+    for (VkSampler sampler : samplers)
+        vkDestroySampler(app->logicalDevice, sampler, nullptr);
+
     for (VkBuffer buffer : buffers)
         vkDestroyBuffer(app->logicalDevice, buffer, nullptr);
-
-    for (VkDeviceMemory memory : bufferMemory)
-        vkFreeMemory(app->logicalDevice, memory, nullptr);
 
     // Destroy the image views first
     for (VkImageView imageView : imageViews) 
@@ -482,12 +950,33 @@ void ResourceManager::destroy()
         vkDestroyImage(app->logicalDevice, image, nullptr);
 
     // Finally, destroy image memory
-    for (VkDeviceMemory memoryResource : imageMemory) 
-        vkFreeMemory(app->logicalDevice, memoryResource, nullptr);
+    for (VkDeviceMemory deviceMemory : deviceMemorySet) 
+        vkFreeMemory(app->logicalDevice, deviceMemory, nullptr);
 
     for (VkDescriptorPool descriptorPool : descriptorPools)
         vkDestroyDescriptorPool(app->logicalDevice, descriptorPool, nullptr);
 
     for (VkDescriptorSetLayout descriptorSetLayout : descriptorSetLayouts)
         vkDestroyDescriptorSetLayout(app->logicalDevice, descriptorSetLayout, nullptr);
+
+    for (VkRenderPass renderPass : renderPasses)
+        vkDestroyRenderPass(app->logicalDevice, renderPass, nullptr);
+    
+    for (VkShaderModule shaderModule : shaderModules)
+        vkDestroyShaderModule(app->logicalDevice, shaderModule, nullptr);
+
+    for (VkPipeline pipeline : pipelines)
+        vkDestroyPipeline(app->logicalDevice, pipeline, nullptr);
+
+    for (VkPipelineLayout pipelineLayout : pipelineLayouts)
+        vkDestroyPipelineLayout(app->logicalDevice, pipelineLayout, nullptr);
+
+    for (VkFence fence : fences)
+        vkDestroyFence(app->logicalDevice, fence, nullptr);
+    
+    for (VkSemaphore semaphore : semaphores)
+        vkDestroySemaphore(app->logicalDevice, semaphore, nullptr);
+    
+    for (VkCommandPool commandPool : commandPools)
+        vkDestroyCommandPool(app->logicalDevice, commandPool, nullptr);
 }

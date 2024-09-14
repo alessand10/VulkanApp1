@@ -2,6 +2,7 @@
 #include "resource-manager.h"
 #include "attach.h"
 #include "vulkan-app.h"
+#include "utilities.h"
 /**
  * The goal of this task is to create a Vulkan compute shader pipeline that takes the 
  * pixel position and time as inputs and writes to an image.
@@ -20,7 +21,7 @@ struct UBO {
 VkBuffer computeUBO;
 VkDeviceMemory computeUBOMemory;
 
-AppImage2D outputImage;
+AppImageBundle outputImage;
 
 VkDescriptorSetLayout descriptorSetlayout;
 VkDescriptorSet computePipelineDescriptorSet;
@@ -81,13 +82,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
 
     THROW(vkBindBufferMemory(app->logicalDevice, computeUBO, computeUBOMemory, 0U), "Failed to bind UBO memory");
 
-    outputImage = resourceManager->createImage(1024U, 1024U, AppImageTemplate::DEVICE_WRITE_SAMPLED_TEXTURE);
-
-    resourceManager->allocateImageMemory(outputImage);
-
-    resourceManager->bindImageToMemory(outputImage);
-
-    resourceManager->createImageView(outputImage);
+    outputImage = resourceManager->createImageAll(1024U, 1024U, AppImageTemplate::DEVICE_WRITE_SAMPLED_TEXTURE);
 
 
     computeShaderDescriptorPool = resourceManager->createDescriptorPool(1U, {{AppDescriptorItemTemplate::CS_UNIFORM_BUFFER, 1}, {AppDescriptorItemTemplate::CS_STORAGE_IMAGE, 1U}});
@@ -108,7 +103,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
      * Next we create the compute shader module
      */
 
-    std::vector<char> shaderCode = app->readFile("../shaders/build/comp.spv");
+    std::vector<char> shaderCode = readFile("../shaders/build/comp.spv");
     VkShaderModuleCreateInfo compShaderModuleCreateInfo{};
     compShaderModuleCreateInfo.pNext = nullptr;
     compShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -193,7 +188,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
      */
 
     resourceManager->updateBufferDescriptor(computePipelineDescriptorSet, computeUBO, sizeof(UBO), 0U, AppDescriptorItemTemplate::CS_UNIFORM_BUFFER);
-    resourceManager->updateImageDescriptor(outputImage, computePipelineDescriptorSet, 1U, AppDescriptorItemTemplate::CS_STORAGE_IMAGE);
+    resourceManager->updateImageDescriptor(outputImage.imageView, computePipelineDescriptorSet, 1U, AppDescriptorItemTemplate::CS_STORAGE_IMAGE);
 
     /**
      * We must now transition the image layout for the output image to VK_IMAGE_LAYOUT_GENERAL
@@ -201,7 +196,7 @@ void computeShaderSetup(ResourceManager* resourceManager) {
      */
 
     VkImageMemoryBarrier memBar{};
-    memBar.image = outputImage.image;
+    memBar.image = outputImage.image.get();
     memBar.pNext = nullptr;
     memBar.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     memBar.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;

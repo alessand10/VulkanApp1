@@ -28,7 +28,12 @@ void MeshManager::insertMesh(Mesh *mesh)
         }
     }
 
-    app->updateVIBuffers();
+    app->resourceManager.copyDataToStagingBuffer(app->stagingVertexBuffer.deviceMemory, getVertexData(), getVertexDataSize());
+    app->resourceManager.pushStagingBuffer(app->stagingVertexBuffer.buffer, app->deviceVertexBuffer.buffer);
+
+    app->resourceManager.copyDataToStagingBuffer(app->stagingIndexBuffer.deviceMemory, getIndexData(), getIndexDataSize());
+    app->resourceManager.pushStagingBuffer(app->stagingIndexBuffer.buffer, app->deviceIndexBuffer.buffer);
+
     insertedMeshData[meshes.size() - 1] = MeshInsertion{vertexOffset, indexOffset, vertexCount, indexCount};
 }
 

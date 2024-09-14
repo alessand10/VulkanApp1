@@ -1,12 +1,16 @@
 #pragma once
 
 #include <vulkan/vulkan.hpp>
+#include <list>
+#include "app-resource.h"
+
 
 enum class AppImageTemplate {
     PREWRITTEN_SAMPLED_TEXTURE = 0U,
     STAGING_IMAGE_TEXTURE = 1U,
     DEVICE_WRITE_SAMPLED_TEXTURE = 2U,
-    DEPTH_STENCIL
+    DEPTH_STENCIL,
+    SWAPCHAIN_FORMAT
 };
 
 enum class AppBufferTemplate {
@@ -20,22 +24,44 @@ enum class AppBufferTemplate {
 /**
  * A Wrapper around a VkImage, VkDeviceMemory, VkImageView, and VkSampler which holds information regarding the image
  */
-struct AppImage2D {
-    VkImage image = VK_NULL_HANDLE;
+struct AppImage : AppResource<VkImage> {
     AppImageTemplate imageCreationTemplate = AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE;
     uint32_t layerCount = 1U;
-    VkDeviceMemory memory = VK_NULL_HANDLE;
-    VkImageView view = VK_NULL_HANDLE;
     uint32_t width;
     uint32_t height;
     VkImageLayout imageLayout;
 };
 
-struct AppBuffer {
-    VkBuffer buffer = VK_NULL_HANDLE;
+struct AppImageView : AppResource<VkImageView> {
+    AppImageTemplate imageCreationTemplate = AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE;
+};
+
+struct AppDeviceMemory : AppResource<VkDeviceMemory> {
+
+};
+
+struct AppCommandPool : AppResource<VkCommandPool>{
+    uint32_t queueFamilyIndex;
+};
+
+struct AppImageBundle {
+    AppImage image;
+    AppImageView imageView;
+    AppDeviceMemory deviceMemory;
+};
+
+struct AppBuffer : AppResource<VkBuffer> {
     AppBufferTemplate appBufferTemplate = AppBufferTemplate::UNIFORM_BUFFER;
-    VkDeviceMemory memory = VK_NULL_HANDLE;
     size_t size;
+};
+
+struct AppBufferBundle {
+    AppBuffer buffer;
+    AppDeviceMemory deviceMemory;
+};
+
+struct AppFramebuffer : AppResource<VkFramebuffer> {
+
 };
 
 enum class AppDescriptorItemTemplate {
@@ -45,13 +71,153 @@ enum class AppDescriptorItemTemplate {
     CS_STORAGE_IMAGE,
 };
 
+struct AppShaderModule {
+    VkShaderModule shaderModule;
+    VkShaderStageFlagBits shaderStage;
+};
+
+enum class AppAttachmentTemplate {
+    SWAPCHAIN_COLOR_ATTACHMENT,
+    SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT,
+    APP_TEXTURE_COLOR_ATTACHMENT,
+};
+
+struct AppSwapchain : AppResource<VkSwapchainKHR> {
+    std::vector<AppImage> swapchainImages;
+    std::vector<AppImageView> swapchainImageViews;
+    std::vector<AppFramebuffer> framebuffers;
+};
+
+struct AppAttachment {
+    AppAttachmentTemplate attachmentTemplate;
+};
+
+enum class AppSamplerTemplate {
+    DEFAULT
+};
+
+struct AppSampler : AppResource<VkSampler> {
+
+};
+
+static VkSamplerCreateInfo getSamplerCreateInfoFromTemplate(AppSamplerTemplate t) {
+    switch (t) {
+        case AppSamplerTemplate::DEFAULT : {
+            return {
+                VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                nullptr,
+                0U,
+                VK_FILTER_LINEAR,
+                VK_FILTER_LINEAR,
+                VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                0.f,
+                VK_FALSE,
+                16.0f,
+                VK_TRUE,
+                VK_COMPARE_OP_ALWAYS,
+                0.f,
+                1.f,
+                VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+                VK_FALSE,
+            };
+        }
+        default: 
+            return {};
+    }
+};
+
+struct AppSubpassAttachmentRef {
+    uint32_t attachmentIndex;
+    VkImageLayout imageLayout;
+};
+
+struct AppSubpass {
+    std::vector<AppSubpassAttachmentRef> attachmentRefs;
+};
+
+enum class AttachmentType {
+    COLOR,
+    DEPTH_STENCIL
+};
+
+static AttachmentType getAttachmentTypeFromTemplate(AppAttachmentTemplate t) {
+    switch (t) {
+        case AppAttachmentTemplate::SWAPCHAIN_COLOR_ATTACHMENT: 
+        case AppAttachmentTemplate::APP_TEXTURE_COLOR_ATTACHMENT: 
+            return AttachmentType::COLOR;
+        case AppAttachmentTemplate::SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT:
+            return AttachmentType::DEPTH_STENCIL;
+        default: return AttachmentType::COLOR;
+    }
+}
+
+static VkAttachmentDescription getAttachmentDescriptionFromTemplate(AppAttachmentTemplate t) {
+    /**
+     * flags;
+     * format;
+     * samples;
+     * loadOp;
+     * storeOp;
+     * stencilLoadOp;
+     * stencilStoreOp;
+     * initialLayout;
+     * finalLayout;
+     */
+    switch(t) {
+        case AppAttachmentTemplate::SWAPCHAIN_COLOR_ATTACHMENT : {
+            return {
+                0U,
+                VK_FORMAT_B8G8R8A8_SRGB,
+                VK_SAMPLE_COUNT_1_BIT,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_STORE,
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+            };
+        }
+        case AppAttachmentTemplate::SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT : {
+            return {
+                0U,
+                VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK_SAMPLE_COUNT_1_BIT,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_STORE,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+            };
+        }
+        case AppAttachmentTemplate::APP_TEXTURE_COLOR_ATTACHMENT : {
+            return {
+                0U,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_SAMPLE_COUNT_1_BIT,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_STORE,
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            };
+        }
+        default : 
+        return {};
+    }
+}
+
 struct AppDescriptor {
     AppDescriptorItemTemplate descriptorTemplate;
     uint32_t binding;
 };
 
 struct AppImageDescriptor : AppDescriptor {
-    AppImage2D appImage;
+    AppImage appImage;
     VkSampler sampler = VK_NULL_HANDLE;
 };
 
@@ -250,6 +416,29 @@ static VkImageViewCreateInfo getImageViewCreateInfoFromTemplate(AppImageTemplate
                 1U //layerCount
             }
         };
+        case AppImageTemplate::SWAPCHAIN_FORMAT : {
+            return {
+            VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, // sType
+            NULL, //pNext
+            0U, //flags
+            VK_NULL_HANDLE, //image
+            VK_IMAGE_VIEW_TYPE_2D, //viewType
+            VK_FORMAT_B8G8R8A8_SRGB, //format
+            { 
+                VK_COMPONENT_SWIZZLE_IDENTITY, //r
+                VK_COMPONENT_SWIZZLE_IDENTITY, //g
+                VK_COMPONENT_SWIZZLE_IDENTITY, //b
+                VK_COMPONENT_SWIZZLE_IDENTITY //a
+            },
+            { 
+                VK_IMAGE_ASPECT_COLOR_BIT, //aspectMask
+                0U, //baseMipLevel
+                1U, //levelCount
+                0U, //baseArrayLayer
+                1U //layerCount
+            }
+        };
+        }
 
         default:
             return {};
