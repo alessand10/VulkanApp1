@@ -29,6 +29,20 @@ if (CMAKE_HOST_UNIX)
     endif()
 elseif (CMAKE_HOST_WIN32)
     message(STATUS ">>> Windows system detected")
+    add_compile_options(-g -lglfw -lGLU -lGL -lm)
+        find_package(glfw3 REQUIRED)
+        find_package(libjpeg-turbo REQUIRED)
+        find_package(VulkanHeaders REQUIRED)
+        find_package(VulkanLoader REQUIRED)
+        find_package(glm REQUIRED)
+        target_link_libraries ( 
+                                ${PROJECT_NAME} 
+                                PUBLIC libjpeg-turbo::libjpeg-turbo
+                                PUBLIC glfw
+                                PUBLIC vulkan-headers::vulkan-headers
+                                PUBLIC Vulkan::Loader
+                                PUBLIC glm::glm
+                            )
 endif()
 
 
