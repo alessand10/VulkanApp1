@@ -7,6 +7,7 @@
 
 VulkanApp* appHandle;
 
+
 void VulkanApp::init()
 {
     // Initialize the vulkan loader
@@ -20,6 +21,7 @@ void VulkanApp::init()
     createWindow();
 
     instance = resourceManager.createInstance("Vulkan App", true);
+    
     setupDebugMessenger();
 
     selectPhysicalDevice();

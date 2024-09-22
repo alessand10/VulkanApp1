@@ -1,5 +1,5 @@
 #include "camera.h"
-#include "ext.hpp"
+#include "glm/ext.hpp"
 
 AppCamera::AppCamera()
 {

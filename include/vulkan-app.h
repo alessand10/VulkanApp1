@@ -1,6 +1,6 @@
 #pragma once
 #include "vulkan/vulkan.hpp"
-#include "glm.hpp"
+#include "glm/glm.hpp"
 #include "camera.h"
 #include <map>
 #include "mesh-manager.h"
