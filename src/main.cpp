@@ -7,7 +7,7 @@ int main() {
     VulkanApp app;
     app.init();
 
-    app.meshManager.importMeshFromOBJ("../mesh/cube1.obj");
+    app.meshManager.importMeshFromOBJ("C:/CodeProjects/VulkanApp1/mesh/cube1.obj");
 
     app.renderLoop();
     app.cleanup();

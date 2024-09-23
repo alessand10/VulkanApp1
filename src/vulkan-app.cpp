@@ -36,8 +36,8 @@ void VulkanApp::init()
     commandPool = resourceManager.createCommandPool(queueFamilyIndices.graphics);
     commandBuffer = resourceManager.allocateCommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-    albedo = createAndLoadVulkanImage("../images/muddy_base.ppm", this);
-    normal = createAndLoadVulkanImage("../images/muddy_normal.ppm", this);
+    albedo = createAndLoadVulkanImage("C:/CodeProjects/VulkanApp1/images/alley-brick-wall_albedo.jpg", this);
+    normal = createAndLoadVulkanImage("C:/CodeProjects/VulkanApp1/images/alley-brick-wall_normal-dx.jpg", this);
 
     // Create the vertex and index staging buffers
     stagingVertexBuffer = resourceManager.createBufferAll(AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * supportedVertexCount);
@@ -108,8 +108,8 @@ void VulkanApp::init()
     }
 
     // Create the shader modules that will be used
-    vertexShaderModule = resourceManager.createShaderModule("../shaders/build/vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-    fragmentShaderModule = resourceManager.createShaderModule("../shaders/build/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+    vertexShaderModule = resourceManager.createShaderModule("C:/CodeProjects/VulkanApp1/shaders/build/vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    fragmentShaderModule = resourceManager.createShaderModule("C:/CodeProjects/VulkanApp1/shaders/build/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // Create the pipeline layout and pipeline
     pipelineLayout = resourceManager.createPipelineLayout({pipelineDescriptorSetLayout});
@@ -396,7 +396,7 @@ void VulkanApp::setupDebugMessenger()
 
 void VulkanApp::createWindow()
 {   
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WIN32);
     glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_ANGLE_PLATFORM_TYPE_VULKAN);
 
     if (!glfwInit()) {
