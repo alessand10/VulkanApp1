@@ -36,7 +36,7 @@ class MeshManager {
     void importMeshFromOBJ(const char* path);
     Vertex* getVertexData() {return vertexData.data();}
     uint32_t getVertexDataSize() {return sizeof(Vertex) * vertexData.size();};
-    u_int32_t* getIndexData() {return indexData.data();}
+    uint32_t* getIndexData() {return indexData.data();}
     uint32_t getIndexDataSize() {return sizeof(uint32_t) * indexData.size();};
 
     uint32_t getMeshCount();

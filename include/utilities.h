@@ -20,3 +20,12 @@ AppImageBundle createAndLoadVulkanImage(const char* path, class VulkanApp* app);
 
 std::vector<char> readFile(const std::string filename);
 
+/**
+ * @brief Reads in and decompresses a JPEG image file
+ * 
+ * @param filename The JPEG image file
+ * @param alignment The number of bytes to align to, set to -1 to have the application compute this value
+ * @return std::vector<char> 
+ */
+std::vector<char> readJPEG(const std::string filename, int alignment, uint32_t* width = nullptr, uint32_t* height = nullptr);
+
