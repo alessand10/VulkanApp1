@@ -396,8 +396,11 @@ void VulkanApp::setupDebugMessenger()
 
 void VulkanApp::createWindow()
 {   
-    glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WIN32);
-    glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_ANGLE_PLATFORM_TYPE_VULKAN);
+    #ifdef WINDOWS_PLATFORM
+        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WIN32);
+    #elif defined(LINUX_PLATFORM)
+        glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_PLATFORM_X11);
+    #endif
 
     if (!glfwInit()) {
         throw std::runtime_error("Failed to initialize glfw library");

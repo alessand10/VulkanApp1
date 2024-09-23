@@ -5,8 +5,6 @@
 #include <filesystem>
 #include <fstream>
 
-#define STRING(x) #x
-#define XSTRING(x) STRING(x)
 
 int main() {
     std::filesystem::current_path(XSTRING(SOURCE_ROOT));
