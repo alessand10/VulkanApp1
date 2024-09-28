@@ -36,6 +36,7 @@ void VulkanApp::init()
     commandPool = resourceManager.createCommandPool(queueFamilyIndices.graphics);
     commandBuffer = resourceManager.allocateCommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
+    // Create an app image bundle fo
     albedo = createAndLoadVulkanImage("../images/alley-brick-wall_albedo.jpg", this);
     normal = createAndLoadVulkanImage("../images/alley-brick-wall_normal-dx.jpg", this);
 
@@ -71,6 +72,8 @@ void VulkanApp::init()
             // subpass 1
             AppSubpass {
                 {
+                    // Color and depth stencil attachments at the 0th and 1st index, respectively
+                    // This must match the framebuffer views
                     AppSubpassAttachmentRef{0U, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
                     AppSubpassAttachmentRef{1U, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}
                 }

@@ -501,12 +501,12 @@ void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &dev
     vkDestroyFence(app->logicalDevice.get(), transferCompleteFence, nullptr);
 }
 
-void ResourceManager::copyDataToStagingBuffer(AppDeviceMemory &stagingBufferMemory, void *data, size_t size)
+void ResourceManager::copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void *data, size_t size)
 {
     void* mappedMemory = nullptr;
-    vkMapMemory(app->logicalDevice.get(), stagingBufferMemory.get(), 0U, size, 0U, &mappedMemory);
+    vkMapMemory(app->logicalDevice.get(), stagingMemory.get(), 0U, size, 0U, &mappedMemory);
     memcpy(mappedMemory, data, size);
-    vkUnmapMemory(app->logicalDevice.get(), stagingBufferMemory.get());
+    vkUnmapMemory(app->logicalDevice.get(), stagingMemory.get());
 }
 
 VkDescriptorSetLayout ResourceManager::createDescriptorSetLayout(std::vector<AppDescriptorItemTemplate> descriptorItems)

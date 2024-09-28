@@ -24,20 +24,28 @@ AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
 
     AppImageBundle returnImageBundle {};
     
+    // Create a dummy image to fetch image requirements from (particularly, the alignment)
     AppImage dummyImage = app->resourceManager.createImage(1U, 1U, AppImageTemplate::STAGING_IMAGE_TEXTURE);
     VkMemoryRequirements imageMemoryRequirements{};
     vkGetImageMemoryRequirements(app->logicalDevice.get(), dummyImage.get(), &imageMemoryRequirements);
 
     uint32_t width = 0, height = 0;
 
+    // Specify the pixel format to retrieve the JPEG with
     int pixelFormat = TJPF_RGBA;
     tjhandle turboJpegHandle = tj3Init(TJINIT_DECOMPRESS);
+
+    // Read in the jpeg image file
     std::vector<char> jpegImage = readJPEG(path, imageMemoryRequirements.alignment, &width, &height);
 
+    // Define the staging image and memory that the CPU will write into
     AppImage stagingImage;
     AppDeviceMemory stagingImageMemory;
 
+    // Create an image bundle to be used for the return image
     returnImageBundle.image = app->resourceManager.createImage(width, height, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE);
+
+    // Initialize the actual staging image
     stagingImage = app->resourceManager.createImage(width, height, AppImageTemplate::STAGING_IMAGE_TEXTURE);
     
     VkMemoryRequirements stagingImageMemoryRequirements;
@@ -53,12 +61,13 @@ AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
 
     void* mappedImageMemory = nullptr;
 
-    // The image memory is then copied from the CPU to the staging image
-    THROW(vkMapMemory(device, stagingImageMemory.get(), 0U, stagingImageMemoryRequirements.size, 0U, &mappedImageMemory), "Failed to map staging image memory");
-    memcpy(mappedImageMemory, jpegImage.data(), stagingImageMemoryRequirements.size);
-    vkUnmapMemory(device, stagingImageMemory.get());
+    // Copy the image into the staging image resource
+    app->resourceManager.copyDataToStagingMemory(stagingImageMemory, jpegImage.data(), stagingImageMemoryRequirements.size);
 
+    // Push the staging image contents to the device-local image
     app->resourceManager.pushStagingImage(stagingImage, returnImageBundle.image);
+
+    // Transition the image to be used as a shader resource
     app->resourceManager.transitionImageLayout(returnImageBundle.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     // Destroy the staging image

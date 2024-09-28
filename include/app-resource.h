@@ -2,6 +2,13 @@
 #include <list>
 
 
+/**
+ * @class AppResource
+ * 
+ * @brief Encapsultes a Vulkan resource, serving as a node within the linked-lists provided by the resource manager.
+ * 
+ * 
+ */
 template <typename T>
 class AppResource {
     bool isInitialized = false;

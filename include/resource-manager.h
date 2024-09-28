@@ -7,6 +7,9 @@
 /**
  * @class ResourceManager
  * @brief Manages the creation and destruction of Vulkan resources.
+ * 
+ * The resource manager class provides an extensive list of operations to create and destroy
+ * application resources.
  */
 
 class ResourceManager {
@@ -84,14 +87,16 @@ class ResourceManager {
      * @param width The width of the image
      * @param height The height of the image
      * @param appImageTemplate The template to create the image from
-     * @param layers The number of array layers to create for this image
+     * @param layerCount The number of array layers to create for this image
      * 
-     * @return The created image object
+     * @return The created image bundle (containing an image, view and memory)
      */
     AppImageBundle createImageAll(uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount = 1U);
 
     /**
      * @brief Transitions an image from its current layout to a new layout
+     * 
+     * The application must have a command buffer to transition an image's layout.
      * 
      * @param image The image to transition the layout of
      * @param newLayout The layout to transition the new image to
@@ -99,7 +104,7 @@ class ResourceManager {
     void transitionImageLayout(AppImage &image, VkImageLayout newLayout);
 
     /**
-     * @brief Create an app-managed image view based on the image & template passed in
+     * @brief Pushes the content of a staging image (with a linear layout) to a device-local image.
      * 
      * @note The returned image will be in the layout VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, it can be
      * transitioned for further use with the transitionImageLayout() method.
@@ -116,15 +121,34 @@ class ResourceManager {
     void bindBufferToMemory(AppBuffer &appBuffer, AppDeviceMemory &deviceMemory);
     AppBufferBundle createBufferAll(AppBufferTemplate bufferTemplate, size_t size);
     void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer);
-    void copyDataToStagingBuffer(AppDeviceMemory &stagingBufferMemory, void* memory, size_t size);
+    void copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void* memory, size_t size);
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
     std::vector<VkDescriptorPool> descriptorPools;
     std::vector<VkDescriptorSet> descriptorSets;
 
     VkDescriptorSetLayout createDescriptorSetLayout(std::vector<AppDescriptorItemTemplate> descriptorItems);
+
+    /**
+     * @brief Creates a descriptor pool capable of allocated the specified number of descriptor sets/types
+     * 
+     * @param maxSetsCount The total number of descriptors sets that can be allocated from this pool
+     * @param descriptorTypeCounts A map specifying the total number of each descriptor type that can be allocated across all descriptor sets
+     */
     VkDescriptorPool createDescriptorPool(uint32_t maxSetsCount, std::map<AppDescriptorItemTemplate, uint32_t> descriptorTypeCounts);
+
+    /**
+     * @brief Allocates a single descriptor set of the provided layout from the specified descriptor pool
+     * 
+     * @param descriptorSetLayout The descriptor set layout used to create the descriptor set
+     * @param descriptorPool The pool from which the descriptor set is allocated
+     */
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool descriptorPool);
+
+
+    /**
+     * @brief Updates an image descriptor for a particular descriptor set
+     */
     void updateImageDescriptor(AppImageView imageView, VkDescriptorSet set, uint32_t binding, AppDescriptorItemTemplate itemTemplate, AppSampler sampler = AppSampler{});
     void updateBufferDescriptor(VkDescriptorSet set, VkBuffer buffer, uint32_t size,  uint32_t binding, AppDescriptorItemTemplate itemTemplate);
 
