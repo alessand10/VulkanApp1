@@ -100,8 +100,9 @@ class ResourceManager {
      * 
      * @param image The image to transition the layout of
      * @param newLayout The layout to transition the new image to
+     * @param targetLayer The layer to transition the layout of
      */
-    void transitionImageLayout(AppImage &image, VkImageLayout newLayout);
+    void transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer = 0U);
 
     /**
      * @brief Pushes the content of a staging image (with a linear layout) to a device-local image.
@@ -112,7 +113,7 @@ class ResourceManager {
      * @param stagingImage The staging image to copy data from
      * @param deviceLocalImage The device-local image to copy data to
      */
-    void pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage);
+    void pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, uint32_t deviceLocalLayer = 0);
 
     std::list<VkBuffer> buffers = {};
 

@@ -76,6 +76,53 @@ AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
     return returnImageBundle;
 }
 
+void loadJPEGImage(const char *path, AppImage image, uint32_t targetLayer, VulkanApp *app)
+{
+    VkDevice device = app->logicalDevice.get();
+    
+    // Create a dummy staging image to fetch image requirements from (particularly, the alignment)
+    AppImage dummyImage = app->resourceManager.createImage(1U, 1U, AppImageTemplate::STAGING_IMAGE_TEXTURE);
+    VkMemoryRequirements imageMemoryRequirements{};
+    vkGetImageMemoryRequirements(app->logicalDevice.get(), dummyImage.get(), &imageMemoryRequirements);
+
+    uint32_t width = 0, height = 0;
+
+    // Specify the pixel format to retrieve the JPEG with
+    int pixelFormat = TJPF_RGBA;
+    tjhandle turboJpegHandle = tj3Init(TJINIT_DECOMPRESS);
+
+    // Read in the jpeg image file
+    std::vector<char> jpegImage = readJPEG(path, imageMemoryRequirements.alignment, &width, &height);
+
+    // Define the staging image and memory that the CPU will write into
+    AppImage stagingImage;
+    AppDeviceMemory stagingImageMemory;
+
+    // Initialize the actual staging image
+    stagingImage = app->resourceManager.createImage(width, height, AppImageTemplate::STAGING_IMAGE_TEXTURE);
+    
+    VkMemoryRequirements stagingImageMemoryRequirements;
+    vkGetImageMemoryRequirements(app->logicalDevice.get(), stagingImage.get(), &stagingImageMemoryRequirements);
+
+    stagingImageMemory = app->resourceManager.allocateImageMemory(stagingImage);
+
+    app->resourceManager.bindImageToMemory(stagingImage, stagingImageMemory);
+
+    void* mappedImageMemory = nullptr;
+
+    // Copy the image into the staging image resource
+    app->resourceManager.copyDataToStagingMemory(stagingImageMemory, jpegImage.data(), stagingImageMemoryRequirements.size);
+
+    // Push the staging image contents to the device-local image
+    app->resourceManager.pushStagingImage(stagingImage, image, targetLayer);
+
+    // Transition the image to be used as a shader resource
+    app->resourceManager.transitionImageLayout(image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, targetLayer);
+
+    // Destroy the staging image
+    app->resourceManager.destroyImage(stagingImage);
+}
+
 std::vector<char> readFile(const std::string filename)
 {
     std::vector<char> fileData;

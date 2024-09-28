@@ -37,8 +37,10 @@ void VulkanApp::init()
     commandBuffer = resourceManager.allocateCommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
     // Create an app image bundle fo
-    albedo = createAndLoadVulkanImage("../images/alley-brick-wall_albedo.jpg", this);
-    normal = createAndLoadVulkanImage("../images/alley-brick-wall_normal-dx.jpg", this);
+    albedo = resourceManager.createImageAll(2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
+    normal = resourceManager.createImageAll(2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
+    loadJPEGImage("../images/alley-brick-wall_albedo.jpg", albedo.image, 0U, this);
+    loadJPEGImage("../images/alley-brick-wall_normal-dx.jpg", normal.image, 0U, this);
 
     // Create the vertex and index staging buffers
     stagingVertexBuffer = resourceManager.createBufferAll(AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * supportedVertexCount);
