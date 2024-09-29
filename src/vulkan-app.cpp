@@ -7,6 +7,12 @@
 
 VulkanApp* appHandle;
 
+AppImageBundle albedo;
+AppImageBundle normal;
+
+struct FragmentPushConst {
+    uint32_t textureIndex = 0u;
+};
 
 void VulkanApp::init()
 {
@@ -43,6 +49,9 @@ void VulkanApp::init()
     // Load the brick wall texture into layer 0 of the albedo and normal, respectively
     loadJPEGImage("../images/alley-brick-wall_albedo.jpg", albedo.image, 0U, this);
     loadJPEGImage("../images/alley-brick-wall_normal-dx.jpg", normal.image, 0U, this);
+
+    loadJPEGImage("../images/new-brick-wall-albedo.jpeg", albedo.image, 1U, this);
+    loadJPEGImage("../images/new-brick-wall-normal.jpeg", normal.image, 1U, this);
 
     // Create the vertex and index staging buffers
     stagingVertexBuffer = resourceManager.createBufferAll(AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * supportedVertexCount);
@@ -119,7 +128,16 @@ void VulkanApp::init()
     fragmentShaderModule = resourceManager.createShaderModule("../shaders/build/frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // Create the pipeline layout and pipeline
-    pipelineLayout = resourceManager.createPipelineLayout({pipelineDescriptorSetLayout});
+    pipelineLayout = resourceManager.createPipelineLayout(
+        // Specify descriptor sets
+        {
+            pipelineDescriptorSetLayout
+        }, 
+        // Specify push constant ranges
+        {
+            {VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst)}
+        }
+    );
     colorGraphicsPipeline = resourceManager.createGraphicsPipeline(
         {vertexShaderModule, fragmentShaderModule},
         pipelineLayout,
@@ -162,6 +180,10 @@ void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, colorGraphicsPipeline);
+
+    // Push the texture constants
+    FragmentPushConst pc {1U};
+    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst), &pc);
 
     VkDeviceSize offsets[] = {0UL};
     VkBuffer vertexBuffers[] = {deviceVertexBuffer.buffer.get()};

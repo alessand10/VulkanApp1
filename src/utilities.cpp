@@ -142,8 +142,9 @@ std::vector<char> readJPEG(const std::string filename, int alignment, uint32_t* 
     tjhandle turboJpegHandle = tj3Init(TJINIT_DECOMPRESS);
     
     std::vector<char> jpegFile = readFile(filename);
+    if (jpegFile.size() == 0) throw std::runtime_error("Failed to open jpeg image");
     const unsigned char* jpegData = static_cast<const unsigned char*>(static_cast<void*>(jpegFile.data()));
-
+    
     int pixelFormat = TJPF_RGBA;
 
     // Retrieve image parameters

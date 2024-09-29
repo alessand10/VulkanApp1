@@ -102,7 +102,7 @@ class ResourceManager {
      * @param newLayout The layout to transition the new image to
      * @param targetLayer The layer to transition the layout of
      */
-    void transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer = 0U);
+    void transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer = 0U, uint32_t layerCount = 1U);
 
     /**
      * @brief Pushes the content of a staging image (with a linear layout) to a device-local image.
@@ -175,7 +175,7 @@ class ResourceManager {
      * @brief Create a Vulkan Pipeline Layout object
      * 
      * @param descriptorSetLayouts The descriptor set layout to create the pipeline layout with
-     * @param pushConstantRanges The push constant ranges to create the pipeline layout with
+     * @param pushConstantRanges The push constant ranges to create the pipeline layout with. Structure: {VkShaderStageFlags stageFlags; uint32_t offset; uint32_t size;}
      * @return VkPipelineLayout 
      */
     VkPipelineLayout createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts, std::vector<VkPushConstantRange> pushConstantRanges = {});

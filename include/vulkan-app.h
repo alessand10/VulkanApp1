@@ -23,9 +23,6 @@ class VulkanApp {
     MeshManager meshManager;
     ResourceManager resourceManager;
 
-    AppImageBundle albedo;
-    AppImageBundle normal;
-
     VkDebugUtilsMessengerEXT debugMessenger;
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);

@@ -211,6 +211,11 @@ AppImageView ResourceManager::createImageView(AppImage &image, uint32_t layerCou
     createInfo.subresourceRange.layerCount = layerCount;
     createInfo.subresourceRange.baseArrayLayer = baseLayer;
 
+    // If this view will encompass more than one layer, give it the array type
+    if (layerCount > 1) {
+        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    }
+
     imageViews.push_front(VkImageView{});
     returnView.setRef(imageViews.begin());
 
@@ -278,17 +283,17 @@ AppImageBundle ResourceManager::createImageAll(uint32_t width, uint32_t height, 
     bundle.image = createImage(width, height, appImageTemplate, layerCount);
     bundle.deviceMemory = allocateImageMemory(bundle.image);
     bindImageToMemory(bundle.image, bundle.deviceMemory);
-    bundle.imageView = createImageView(bundle.image);
+    bundle.imageView = createImageView(bundle.image, layerCount);
     return bundle;
 }
 
-void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer)
+void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer, uint32_t layerCount)
 {
     VkImageMemoryBarrier layoutTransitionBarrier{};
     layoutTransitionBarrier.pNext = nullptr;
     layoutTransitionBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     //                                {aspect mask, mip level, mip level count, array layer, array layer count}
-    layoutTransitionBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 1U, targetLayer, 1U};
+    layoutTransitionBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 1U, targetLayer, layerCount};
     layoutTransitionBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     layoutTransitionBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     layoutTransitionBarrier.srcAccessMask = VK_ACCESS_NONE; // We are not waiting for anything to occur prior to this barrier
@@ -340,7 +345,7 @@ void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLa
 void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, uint32_t deviceLocalLayer)
 {
     transitionImageLayout(stagingImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    transitionImageLayout(deviceLocalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    transitionImageLayout(deviceLocalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, deviceLocalLayer);
 
     VkSubmitInfo submitInfo{};
     submitInfo.pCommandBuffers = &(app->commandBuffer);
