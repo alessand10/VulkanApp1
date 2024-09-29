@@ -171,7 +171,14 @@ class ResourceManager {
     std::vector<VkPipeline> pipelines;
     std::vector<VkPipelineLayout> pipelineLayouts;
 
-    VkPipelineLayout createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts);
+    /**
+     * @brief Create a Vulkan Pipeline Layout object
+     * 
+     * @param descriptorSetLayouts The descriptor set layout to create the pipeline layout with
+     * @param pushConstantRanges The push constant ranges to create the pipeline layout with
+     * @return VkPipelineLayout 
+     */
+    VkPipelineLayout createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts, std::vector<VkPushConstantRange> pushConstantRanges = {});
     VkPipeline createGraphicsPipeline(std::vector<AppShaderModule> shaderModules, VkPipelineLayout pipelineLayout, VkRenderPass renderPass);
 
     std::vector<VkFence> fences;

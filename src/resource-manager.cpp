@@ -707,15 +707,15 @@ AppShaderModule ResourceManager::createShaderModule(std::string path, VkShaderSt
     return AppShaderModule{shaderModules.back(), shaderStageFlags};
 }
 
-VkPipelineLayout ResourceManager::createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts)
+VkPipelineLayout ResourceManager::createPipelineLayout(std::vector<VkDescriptorSetLayout> descriptorSetLayouts, std::vector<VkPushConstantRange> pushConstantRanges)
 {
     // Create the pipeline layout
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size(); // Optional
-    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data(); // Optional
-    pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-    pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+    pipelineLayoutInfo.setLayoutCount = descriptorSetLayouts.size(); 
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data(); 
+    pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.size(); 
+    pipelineLayoutInfo.pPushConstantRanges =  pushConstantRanges.size() == 0 ? nullptr : pushConstantRanges.data();
 
     pipelineLayouts.push_back(VkPipelineLayout{});
 
