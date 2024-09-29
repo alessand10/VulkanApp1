@@ -10,9 +10,6 @@ int main() {
     std::filesystem::current_path(XSTRING(SOURCE_ROOT));
     VulkanApp app;
     app.init();
-
-    app.meshManager.importMeshFromOBJ("../mesh/cube1.obj");
-
     app.renderLoop();
     app.cleanup();
     

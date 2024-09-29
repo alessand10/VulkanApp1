@@ -28,11 +28,6 @@ class VulkanApp {
     VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
     void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
 
-    struct VSUniformBuffer {
-        glm::mat4 viewMatrix;
-        glm::mat4 projMatrix;
-    };
-
     QueueFamilyIndices queueFamilyIndices;
 
     uint32_t windowWidth = 1080u;
@@ -50,46 +45,15 @@ class VulkanApp {
     AppDevice logicalDevice;
     AppSurface surface;
     AppSwapchain swapchain;
-    AppImageBundle depthStencilImage;
-    VkPipelineLayout pipelineLayout;
-    VkRenderPass renderPass;
-    AppShaderModule vertexShaderModule;
-    AppShaderModule fragmentShaderModule;
-    VkPipeline colorGraphicsPipeline;
-    VkPipeline depthGraphicsPipeline;
-    AppCommandPool commandPool;
-    VkCommandBuffer commandBuffer;
 
     // Queues to submit particular commands
     VkQueue graphicsQueue;
     VkQueue presentQueue;
     VkQueue computeQueue;
 
-    AppBufferBundle stagingVertexBuffer;
-    AppBufferBundle deviceVertexBuffer;
-
-    AppBufferBundle stagingIndexBuffer;
-    AppBufferBundle deviceIndexBuffer;
-
-    std::vector<AppBufferBundle> uniformBuffersVS;
-    VkDescriptorSetLayout pipelineDescriptorSetLayout;
-    VkDescriptorPool descriptorPool;
-    std::vector<VkDescriptorSet> descriptorSetsPerFrame;
-
-    AppSampler sampler;
-
-    // Signal when an image is available
-    VkSemaphore imageAvailableSemaphore;
-
-    // Signal when rendering is complete
-    VkSemaphore renderingFinishedSemaphore;
-
-    // Fence is used to block execution until rendering of previous frame
-    VkFence inFlightFence;
-
     uint32_t maxFramesInFlight = 0u;
 
-    std::vector<void*> mappedUBOs = {};
+    void enumeratePhysicalDevice();
 
     /* App helper methods */
     bool isPhysicalDeviceSuitable(VkPhysicalDevice device);
@@ -113,6 +77,7 @@ class VulkanApp {
     void appKeyCallback(int key, int scancode, int action, int mods);
     void processKeyActions();
 
+    
     public:
     void init();
     void drawFrame(float deltaTime);

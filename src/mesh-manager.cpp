@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vulkan-app.h>
 
-void MeshManager::insertMesh(Mesh *mesh)
+void MeshManager::insertMesh(Mesh *mesh, VkCommandBuffer commandBuffer)
 {
     uint32_t vertexOffset = vertexData.size();
     uint32_t indexOffset = indexData.size();
@@ -28,11 +28,11 @@ void MeshManager::insertMesh(Mesh *mesh)
         }
     }
 
-    app->resourceManager.copyDataToStagingMemory(app->stagingVertexBuffer.deviceMemory, getVertexData(), getVertexDataSize());
-    app->resourceManager.pushStagingBuffer(app->stagingVertexBuffer.buffer, app->deviceVertexBuffer.buffer);
+    app->resourceManager.copyDataToStagingMemory(stagingVertexBuffer.deviceMemory, getVertexData(), getVertexDataSize());
+    app->resourceManager.pushStagingBuffer(stagingVertexBuffer.buffer, deviceVertexBuffer.buffer, commandBuffer);
 
-    app->resourceManager.copyDataToStagingMemory(app->stagingIndexBuffer.deviceMemory, getIndexData(), getIndexDataSize());
-    app->resourceManager.pushStagingBuffer(app->stagingIndexBuffer.buffer, app->deviceIndexBuffer.buffer);
+    app->resourceManager.copyDataToStagingMemory(stagingIndexBuffer.deviceMemory, getIndexData(), getIndexDataSize());
+    app->resourceManager.pushStagingBuffer(stagingIndexBuffer.buffer, deviceIndexBuffer.buffer, commandBuffer);
 
     insertedMeshData[meshes.size() - 1] = MeshInsertion{vertexOffset, indexOffset, vertexCount, indexCount};
 }
@@ -43,7 +43,19 @@ MeshManager::MeshManager()
     indexData = {};
 }
 
-void MeshManager::importMeshFromOBJ(const char *path)
+void MeshManager::setVertexBuffers(AppBufferBundle stagingVertexBuffer, AppBufferBundle deviceVertexBuffer)
+{
+    this->stagingVertexBuffer = stagingVertexBuffer;
+    this->deviceVertexBuffer = deviceVertexBuffer;
+}
+
+void MeshManager::setIndexBuffers(AppBufferBundle stagingIndexBuffer, AppBufferBundle deviceIndexBuffer)
+{
+    this->stagingIndexBuffer = stagingIndexBuffer;
+    this->deviceIndexBuffer = deviceIndexBuffer;
+}
+
+void MeshManager::importMeshFromOBJ(const char *path, VkCommandBuffer commandBuffer)
 {
     meshes.push_back(Mesh{});
     Mesh* mesh = &(meshes[meshes.size() - 1]);
@@ -92,7 +104,7 @@ void MeshManager::importMeshFromOBJ(const char *path)
         std::cout << "Failed to open obj file, check that the path is correct from the build directory and that the file \
         exists." << std::endl;
     }
-    insertMesh(mesh);
+    insertMesh(mesh, commandBuffer);
 }
 
 uint32_t MeshManager::getMeshCount()

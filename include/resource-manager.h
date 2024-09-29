@@ -102,7 +102,7 @@ class ResourceManager {
      * @param newLayout The layout to transition the new image to
      * @param targetLayer The layer to transition the layout of
      */
-    void transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer = 0U, uint32_t layerCount = 1U);
+    void transitionImageLayout(AppImage &image, VkImageLayout newLayout, VkCommandBuffer commandBuffer, uint32_t targetLayer = 0U, uint32_t layerCount = 1U);
 
     /**
      * @brief Pushes the content of a staging image (with a linear layout) to a device-local image.
@@ -113,7 +113,7 @@ class ResourceManager {
      * @param stagingImage The staging image to copy data from
      * @param deviceLocalImage The device-local image to copy data to
      */
-    void pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, uint32_t deviceLocalLayer = 0);
+    void pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, VkCommandBuffer commandBuffer, uint32_t deviceLocalLayer = 0);
 
     std::list<VkBuffer> buffers = {};
 
@@ -121,7 +121,7 @@ class ResourceManager {
     AppDeviceMemory allocateBufferMemory(AppBuffer &appBuffer);
     void bindBufferToMemory(AppBuffer &appBuffer, AppDeviceMemory &deviceMemory);
     AppBufferBundle createBufferAll(AppBufferTemplate bufferTemplate, size_t size);
-    void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer);
+    void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer, VkCommandBuffer commandBuffer);
     void copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void* memory, size_t size);
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts;

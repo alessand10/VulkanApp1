@@ -14,6 +14,44 @@ struct FragmentPushConst {
     uint32_t textureIndex = 0u;
 };
 
+struct VSUniformBuffer {
+    glm::mat4 viewMatrix;
+    glm::mat4 projMatrix;
+};
+
+AppImageBundle depthStencilImage;
+VkPipelineLayout pipelineLayout;
+VkRenderPass renderPass;
+AppShaderModule vertexShaderModule;
+AppShaderModule fragmentShaderModule;
+VkPipeline graphicsPipeline;
+AppCommandPool commandPool;
+VkCommandBuffer commandBuffer;
+
+AppBufferBundle stagingVertexBuffer;
+AppBufferBundle deviceVertexBuffer;
+
+AppBufferBundle stagingIndexBuffer;
+AppBufferBundle deviceIndexBuffer;
+
+std::vector<AppBufferBundle> uniformBuffersVS;
+VkDescriptorSetLayout pipelineDescriptorSetLayout;
+VkDescriptorPool descriptorPool;
+std::vector<VkDescriptorSet> descriptorSetsPerFrame;
+
+AppSampler sampler;
+
+// Signal when an image is available
+VkSemaphore imageAvailableSemaphore;
+
+// Signal when rendering is complete
+VkSemaphore renderingFinishedSemaphore;
+
+// Fence is used to block execution until rendering of previous frame
+VkFence inFlightFence;
+
+std::vector<void*> mappedUBOs = {};
+
 void VulkanApp::init()
 {
     // Initialize the vulkan loader
@@ -30,7 +68,7 @@ void VulkanApp::init()
     
     setupDebugMessenger();
 
-    selectPhysicalDevice();
+    enumeratePhysicalDevice();
 
     logicalDevice = resourceManager.createDevice(physicalDevice, &queueFamilyIndices);
     vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &graphicsQueue);
@@ -47,11 +85,11 @@ void VulkanApp::init()
     normal = resourceManager.createImageAll(2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
 
     // Load the brick wall texture into layer 0 of the albedo and normal, respectively
-    loadJPEGImage("../images/alley-brick-wall_albedo.jpg", albedo.image, 0U, this);
-    loadJPEGImage("../images/alley-brick-wall_normal-dx.jpg", normal.image, 0U, this);
+    loadJPEGImage("../images/alley-brick-wall_albedo.jpg", albedo.image, commandBuffer, 0U, this);
+    loadJPEGImage("../images/alley-brick-wall_normal-dx.jpg", normal.image, commandBuffer, 0U, this);
 
-    loadJPEGImage("../images/new-brick-wall-albedo.jpeg", albedo.image, 1U, this);
-    loadJPEGImage("../images/new-brick-wall-normal.jpeg", normal.image, 1U, this);
+    loadJPEGImage("../images/new-brick-wall-albedo.jpeg", albedo.image, commandBuffer, 1U, this);
+    loadJPEGImage("../images/new-brick-wall-normal.jpeg", normal.image, commandBuffer, 1U, this);
 
     // Create the vertex and index staging buffers
     stagingVertexBuffer = resourceManager.createBufferAll(AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * supportedVertexCount);
@@ -59,9 +97,14 @@ void VulkanApp::init()
     stagingIndexBuffer = resourceManager.createBufferAll(AppBufferTemplate::INDEX_BUFFER_STAGING, sizeof(uint32_t) * supportedIndexCount);
     deviceIndexBuffer = resourceManager.createBufferAll(AppBufferTemplate::INDEX_BUFFER_DEVICE, sizeof(uint32_t) * supportedIndexCount);
 
+    // Provide the mesh manager will the created buffers
+    meshManager.setVertexBuffers(stagingVertexBuffer, deviceVertexBuffer);
+    meshManager.setIndexBuffers(stagingIndexBuffer, deviceIndexBuffer);
+
     swapchain = resourceManager.createSwapchain();
     depthStencilImage = resourceManager.createImageAll(windowWidth, windowHeight, AppImageTemplate::DEPTH_STENCIL);
 
+    // Create a descriptor pool capable of storing the uniform buffer for each frame in flight, the albedo and the normal
     descriptorPool = resourceManager.createDescriptorPool(maxFramesInFlight, {
         {AppDescriptorItemTemplate::VS_UNIFORM_BUFFER, maxFramesInFlight},
         {AppDescriptorItemTemplate::FS_SAMPLED_IMAGE_WITH_SAMPLER, 2}
@@ -138,7 +181,7 @@ void VulkanApp::init()
             {VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst)}
         }
     );
-    colorGraphicsPipeline = resourceManager.createGraphicsPipeline(
+    graphicsPipeline = resourceManager.createGraphicsPipeline(
         {vertexShaderModule, fragmentShaderModule},
         pipelineLayout,
         renderPass
@@ -150,6 +193,8 @@ void VulkanApp::init()
     imageAvailableSemaphore = resourceManager.createSemaphore();
 
     lastRenderTime = highResClock.now();
+
+    meshManager.importMeshFromOBJ("../mesh/cube1.obj", commandBuffer);
 }
 
 void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -179,7 +224,7 @@ void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, colorGraphicsPipeline);
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
     // Push the texture constants
     FragmentPushConst pc {1U};
@@ -377,6 +422,22 @@ void VulkanApp::processKeyActions()
     if (qDown) appCamera.moveUp(dist * -1.f);
 }
 
+void VulkanApp::enumeratePhysicalDevice()
+{
+    uint32_t physicalDeviceCount;
+
+    // Retrieve the physical device counts (each single complete implementation of vulkan)
+    vkEnumeratePhysicalDevices(instance.get(), &physicalDeviceCount, nullptr);
+    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+
+    // Retrieve the actual physical devices
+    vkEnumeratePhysicalDevices(instance.get(), &physicalDeviceCount, physicalDevices.data());
+
+    // For the purposes of this app, I will just select my device manually (as I only have one)
+    physicalDevice = physicalDevices[0];
+
+}
+
 bool VulkanApp::isPhysicalDeviceSuitable(VkPhysicalDevice device)
 {
     return true;
@@ -443,20 +504,6 @@ void VulkanApp::createWindow()
 
     glfwSetCursorPosCallback(window, glfwCursorPositionCallback);
     glfwSetKeyCallback(window, glfwKeyCallback);
-
-}
-
-void VulkanApp::selectPhysicalDevice()
-{
-    uint32_t physicalDeviceCount;
-
-    // Retrieve the physical devices (each single complete implementation of vulkan)
-    vkEnumeratePhysicalDevices(instance.get(), &physicalDeviceCount, nullptr);
-    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-    vkEnumeratePhysicalDevices(instance.get(), &physicalDeviceCount, physicalDevices.data());
-
-    // For the purposes of this app, I will just select my device manually (as I only have one)
-    physicalDevice = physicalDevices[0];
 
 }
 

@@ -287,7 +287,7 @@ AppImageBundle ResourceManager::createImageAll(uint32_t width, uint32_t height, 
     return bundle;
 }
 
-void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer, uint32_t layerCount)
+void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout, VkCommandBuffer commandBuffer, uint32_t targetLayer, uint32_t layerCount)
 {
     VkImageMemoryBarrier layoutTransitionBarrier{};
     layoutTransitionBarrier.pNext = nullptr;
@@ -308,10 +308,10 @@ void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLa
     beginInfo.pInheritanceInfo = nullptr;
     beginInfo.flags = 0U;
 
-    vkBeginCommandBuffer(app->commandBuffer, &beginInfo);
-    vkCmdPipelineBarrier(app->commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
         0U, 0U, nullptr, 0U, nullptr, 1U, &layoutTransitionBarrier);
-    vkEndCommandBuffer(app->commandBuffer);
+    vkEndCommandBuffer(commandBuffer);
 
     VkFenceCreateInfo transferCompleteFenceInfo{};
     transferCompleteFenceInfo.pNext = nullptr;
@@ -321,7 +321,7 @@ void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLa
     vkCreateFence(app->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
 
     VkSubmitInfo submitInfo{};
-    submitInfo.pCommandBuffers = &(app->commandBuffer);
+    submitInfo.pCommandBuffers = &(commandBuffer);
     submitInfo.commandBufferCount = 1U;
     submitInfo.pNext = nullptr;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -342,13 +342,13 @@ void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLa
     image.imageLayout = newLayout;
 }
 
-void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, uint32_t deviceLocalLayer)
+void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, VkCommandBuffer commandBuffer, uint32_t deviceLocalLayer)
 {
-    transitionImageLayout(stagingImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-    transitionImageLayout(deviceLocalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, deviceLocalLayer);
+    transitionImageLayout(stagingImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, commandBuffer);
+    transitionImageLayout(deviceLocalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, commandBuffer, deviceLocalLayer);
 
     VkSubmitInfo submitInfo{};
-    submitInfo.pCommandBuffers = &(app->commandBuffer);
+    submitInfo.pCommandBuffers = &(commandBuffer);
     submitInfo.commandBufferCount = 1U;
     submitInfo.pNext = nullptr;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -375,9 +375,9 @@ void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceL
     imgCopy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 0U, 1U};
     imgCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, deviceLocalLayer, 1U};
 
-    vkBeginCommandBuffer(app->commandBuffer, &beginInfo);
-    vkCmdCopyImage(app->commandBuffer, stagingImage.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, deviceLocalImage.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1U, &imgCopy);
-    vkEndCommandBuffer(app->commandBuffer);
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    vkCmdCopyImage(commandBuffer, stagingImage.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, deviceLocalImage.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1U, &imgCopy);
+    vkEndCommandBuffer(commandBuffer);
 
     VkFenceCreateInfo transferCompleteFenceInfo{};
     transferCompleteFenceInfo.pNext = nullptr;
@@ -461,10 +461,10 @@ AppBufferBundle ResourceManager::createBufferAll(AppBufferTemplate bufferTemplat
     return bufferBundle;
 }
 
-void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer)
+void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer, VkCommandBuffer commandBuffer)
 {
     VkSubmitInfo submitInfo{};
-    submitInfo.pCommandBuffers = &(app->commandBuffer);
+    submitInfo.pCommandBuffers = &(commandBuffer);
     submitInfo.commandBufferCount = 1U;
     submitInfo.pNext = nullptr;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -486,9 +486,9 @@ void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &dev
     bufferCopy.srcOffset = 0U;
     bufferCopy.size = stagingBuffer.size;
 
-    vkBeginCommandBuffer(app->commandBuffer, &beginInfo);
-    vkCmdCopyBuffer(app->commandBuffer, stagingBuffer.get(), deviceLocalBuffer.get(), 1U, &bufferCopy);
-    vkEndCommandBuffer(app->commandBuffer);
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    vkCmdCopyBuffer(commandBuffer, stagingBuffer.get(), deviceLocalBuffer.get(), 1U, &bufferCopy);
+    vkEndCommandBuffer(commandBuffer);
 
     VkFenceCreateInfo transferCompleteFenceInfo{};
     transferCompleteFenceInfo.pNext = nullptr;

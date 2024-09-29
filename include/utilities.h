@@ -6,9 +6,9 @@
 
 std::vector<std::string> splitString(std::string& s, const std::string& delimiter);
 
-AppImageBundle createAndLoadVulkanImage(const char* path, class VulkanApp* app);
+AppImageBundle createAndLoadVulkanImage(const char* path, VkCommandBuffer commandBuffer, class VulkanApp* app);
 
-void loadJPEGImage(const char* path, AppImage image, uint32_t targetLayer, class VulkanApp* app);
+void loadJPEGImage(const char* path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer, class VulkanApp* app);
 
 // Creates an image with 6 array layers, ready to be rendered and used as a cubemap
 //AppImage createCubeMap(float planeWidth, float planeHeight, uint32_t imageWidth, uint32_t imageHeight)

@@ -19,7 +19,7 @@ std::vector<std::string> splitString(std::string &s, const std::string &delimite
 /**
  * Loads an image in R8G8B8 format
  */
-AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
+AppImageBundle createAndLoadVulkanImage(const char* path, VkCommandBuffer commandBuffer, VulkanApp* app) {
     VkDevice device = app->logicalDevice.get();
 
     AppImageBundle returnImageBundle {};
@@ -65,10 +65,10 @@ AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
     app->resourceManager.copyDataToStagingMemory(stagingImageMemory, jpegImage.data(), stagingImageMemoryRequirements.size);
 
     // Push the staging image contents to the device-local image
-    app->resourceManager.pushStagingImage(stagingImage, returnImageBundle.image);
+    app->resourceManager.pushStagingImage(stagingImage, returnImageBundle.image, commandBuffer);
 
     // Transition the image to be used as a shader resource
-    app->resourceManager.transitionImageLayout(returnImageBundle.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    app->resourceManager.transitionImageLayout(returnImageBundle.image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, commandBuffer);
 
     // Destroy the staging image
     app->resourceManager.destroyImage(stagingImage);
@@ -76,7 +76,7 @@ AppImageBundle createAndLoadVulkanImage(const char* path, VulkanApp* app) {
     return returnImageBundle;
 }
 
-void loadJPEGImage(const char *path, AppImage image, uint32_t targetLayer, VulkanApp *app)
+void loadJPEGImage(const char *path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer, VulkanApp *app)
 {
     VkDevice device = app->logicalDevice.get();
     
@@ -114,10 +114,10 @@ void loadJPEGImage(const char *path, AppImage image, uint32_t targetLayer, Vulka
     app->resourceManager.copyDataToStagingMemory(stagingImageMemory, jpegImage.data(), stagingImageMemoryRequirements.size);
 
     // Push the staging image contents to the device-local image
-    app->resourceManager.pushStagingImage(stagingImage, image, targetLayer);
+    app->resourceManager.pushStagingImage(stagingImage, image, commandBuffer, targetLayer);
 
     // Transition the image to be used as a shader resource
-    app->resourceManager.transitionImageLayout(image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, targetLayer);
+    app->resourceManager.transitionImageLayout(image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, commandBuffer, targetLayer);
 
     // Destroy the staging image
     app->resourceManager.destroyImage(stagingImage);
