@@ -282,13 +282,13 @@ AppImageBundle ResourceManager::createImageAll(uint32_t width, uint32_t height, 
     return bundle;
 }
 
-void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout)
+void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLayout, uint32_t targetLayer)
 {
     VkImageMemoryBarrier layoutTransitionBarrier{};
     layoutTransitionBarrier.pNext = nullptr;
     layoutTransitionBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     //                                {aspect mask, mip level, mip level count, array layer, array layer count}
-    layoutTransitionBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 1U, 0U, 1U};
+    layoutTransitionBarrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 1U, targetLayer, 1U};
     layoutTransitionBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     layoutTransitionBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     layoutTransitionBarrier.srcAccessMask = VK_ACCESS_NONE; // We are not waiting for anything to occur prior to this barrier
@@ -337,7 +337,7 @@ void ResourceManager::transitionImageLayout(AppImage &image, VkImageLayout newLa
     image.imageLayout = newLayout;
 }
 
-void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage)
+void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceLocalImage, uint32_t deviceLocalLayer)
 {
     transitionImageLayout(stagingImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     transitionImageLayout(deviceLocalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -368,7 +368,7 @@ void ResourceManager::pushStagingImage(AppImage &stagingImage, AppImage &deviceL
     imgCopy.extent.depth = 1U; 
     //                       {Aspect, Mip level, Array layer, Layer count}
     imgCopy.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 0U, 1U};
-    imgCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, 0U, 1U};
+    imgCopy.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0U, deviceLocalLayer, 1U};
 
     vkBeginCommandBuffer(app->commandBuffer, &beginInfo);
     vkCmdCopyImage(app->commandBuffer, stagingImage.get(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, deviceLocalImage.get(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1U, &imgCopy);
@@ -501,12 +501,12 @@ void ResourceManager::pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &dev
     vkDestroyFence(app->logicalDevice.get(), transferCompleteFence, nullptr);
 }
 
-void ResourceManager::copyDataToStagingBuffer(AppDeviceMemory &stagingBufferMemory, void *data, size_t size)
+void ResourceManager::copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void *data, size_t size)
 {
     void* mappedMemory = nullptr;
-    vkMapMemory(app->logicalDevice.get(), stagingBufferMemory.get(), 0U, size, 0U, &mappedMemory);
+    vkMapMemory(app->logicalDevice.get(), stagingMemory.get(), 0U, size, 0U, &mappedMemory);
     memcpy(mappedMemory, data, size);
-    vkUnmapMemory(app->logicalDevice.get(), stagingBufferMemory.get());
+    vkUnmapMemory(app->logicalDevice.get(), stagingMemory.get());
 }
 
 VkDescriptorSetLayout ResourceManager::createDescriptorSetLayout(std::vector<AppDescriptorItemTemplate> descriptorItems)
