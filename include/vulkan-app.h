@@ -8,6 +8,8 @@
 #include <chrono>
 
 #define THROW(x,msg) if (x != VK_SUCCESS) throw std::runtime_error(msg);
+#define STRING(x) #x
+#define XSTRING(x) STRING(x)
 
 class VulkanApp {
     std::chrono::high_resolution_clock::time_point lastRenderTime;
