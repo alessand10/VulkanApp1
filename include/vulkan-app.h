@@ -7,7 +7,10 @@
 #include "resource-manager.h"
 #include <chrono>
 
+// A constant used around Vulkan operations to throw exceptions when the operations fail
 #define THROW(x,msg) if (x != VK_SUCCESS) throw std::runtime_error(msg);
+
+// Used when pulling CMAKE compile definitions
 #define STRING(x) #x
 #define XSTRING(x) STRING(x)
 

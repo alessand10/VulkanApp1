@@ -36,9 +36,11 @@ void VulkanApp::init()
     commandPool = resourceManager.createCommandPool(queueFamilyIndices.graphics);
     commandBuffer = resourceManager.allocateCommandBuffer(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-    // Create an app image bundle fo
+    // Create an app image bundle for the albedo and normal textures
     albedo = resourceManager.createImageAll(2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
     normal = resourceManager.createImageAll(2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
+
+    // Load the brick wall texture into layer 0 of the albedo and normal, respectively
     loadJPEGImage("../images/alley-brick-wall_albedo.jpg", albedo.image, 0U, this);
     loadJPEGImage("../images/alley-brick-wall_normal-dx.jpg", normal.image, 0U, this);
 
