@@ -738,7 +738,7 @@ VkPipeline ResourceManager::createGraphicsPipeline(std::vector<AppShaderModule> 
     vertBindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     vertBindDesc.stride = sizeof(Vertex);
 
-    VkVertexInputAttributeDescription attributeDesc[3] = {
+    VkVertexInputAttributeDescription attributeDesc[4] = {
         // Position
         {
             0U, // Location, the shader input location (layout(location = 0) in vec3 position)
@@ -754,13 +754,20 @@ VkPipeline ResourceManager::createGraphicsPipeline(std::vector<AppShaderModule> 
             VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the normal,
             12U // Offset, we use 12 bytes since position is made up of 3 x 4-byte values
         },
+        // Tangent
+        {
+            2U, // Location, the shader input location (layout(location = 1) in vec3 normal)
+            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
+            VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the normal,
+            24U // Offset, we use 12 bytes since position is made up of 3 x 4-byte values
+        },
 
         // Texcoord
         {
-            2U, // Location, the shader input location (layout(location = 2) in vec2 texCoord)
+            3U, // Location, the shader input location (layout(location = 2) in vec2 texCoord)
             0U, // Binding, the binding number of the vertex buffer from which this data is coming,
             VK_FORMAT_R32G32_SFLOAT, // Format, we use a Float2 for the texture coordinate,
-            24U // Offset, we use 24 bytes since position & normal take up 6 x 4-byte values
+            36U // Offset, we use 24 bytes since position & normal take up 6 x 4-byte values
         }
     };
 
@@ -768,7 +775,7 @@ VkPipeline ResourceManager::createGraphicsPipeline(std::vector<AppShaderModule> 
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &vertBindDesc; 
-    vertexInputInfo.vertexAttributeDescriptionCount = 3;
+    vertexInputInfo.vertexAttributeDescriptionCount = 4;
     vertexInputInfo.pVertexAttributeDescriptions = attributeDesc;
 
     // Configure some input assembler setup

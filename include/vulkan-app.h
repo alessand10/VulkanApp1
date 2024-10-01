@@ -30,8 +30,8 @@ class VulkanApp {
 
     QueueFamilyIndices queueFamilyIndices;
 
-    uint32_t windowWidth = 1080u;
-    uint32_t windowHeight = 720u;
+    uint32_t windowWidth = 1920U;
+    uint32_t windowHeight = 1080U;
 
     AppCamera appCamera;
 
@@ -61,7 +61,6 @@ class VulkanApp {
     /* App inititalization methods */
     void setupDebugMessenger();
     void createWindow();
-    void selectPhysicalDevice();
     void tickTimer();
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);

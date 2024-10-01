@@ -12,14 +12,22 @@ void MeshManager::insertMesh(Mesh *mesh, VkCommandBuffer commandBuffer)
     uint32_t indexOffset = indexData.size();
     uint32_t vertexCount = 0U;
     uint32_t indexCount = 0U;
-    std::vector<Vertex> newVertices = {};
-    std::vector<uint32_t> indices = {};
     for (Face face : mesh->faces) {
         uint32_t iProcOrder[] = {0, 2, 1};
+        glm::vec3 tangent = computeTangentBitangent(
+            mesh->positions[face.posIndices[iProcOrder[0]]],
+            mesh->texCoords[face.texCoordIndices[iProcOrder[0]]],
+            mesh->positions[face.posIndices[iProcOrder[1]]],
+            mesh->texCoords[face.texCoordIndices[iProcOrder[1]]],
+            mesh->positions[face.posIndices[iProcOrder[2]]],
+            mesh->texCoords[face.texCoordIndices[iProcOrder[2]]]
+        )[0];
+
         for (uint32_t i = 0u ; i < 3 ; i++){
             vertexData.push_back({
                 mesh->positions[face.posIndices[iProcOrder[i]]],
                 mesh->normals[face.normalIndices[iProcOrder[i]]],
+                tangent,
                 mesh->texCoords[face.texCoordIndices[iProcOrder[i]]]
             });
             indexData.push_back(vertexCount);

@@ -500,7 +500,7 @@ void VulkanApp::createWindow()
     // over presentation on the window and Vulkan surface creation fails
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
-    window = glfwCreateWindow(1080, 720, "Vulkan App", NULL, NULL);
+    window = glfwCreateWindow(windowWidth, windowHeight, "Vulkan App", NULL, NULL);
 
     glfwSetCursorPosCallback(window, glfwCursorPositionCallback);
     glfwSetKeyCallback(window, glfwKeyCallback);
