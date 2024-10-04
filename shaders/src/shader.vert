@@ -1,6 +1,7 @@
 #version 450
 
 layout(binding = 0) uniform UniformBufferObject {
+    mat4 world;
     mat4 view;
     mat4 proj;
 } ubo;
@@ -35,7 +36,6 @@ void main() {
     outTNBMatrix = transpose(tnbMatrix);
 
     // Move the light direction into the local space of the 
-
     vec4 inPositionModified = vec4(inPosition, 1.0);
     inPositionModified = ubo.proj * ubo.view * inPositionModified;
     gl_Position = inPositionModified;

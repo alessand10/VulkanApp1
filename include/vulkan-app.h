@@ -3,8 +3,9 @@
 #include "glm/glm.hpp"
 #include "camera.h"
 #include <map>
-#include "mesh-manager.h"
-#include "resource-manager.h"
+#include "resource-utilities.h"
+#include "geometry-utilities.h"
+#include "resources.h"
 #include <chrono>
 
 // A constant used around Vulkan operations to throw exceptions when the operations fail
@@ -20,8 +21,7 @@ class VulkanApp {
     
     public:
     std::chrono::duration<double> deltaTime;
-    MeshManager meshManager;
-    ResourceManager resourceManager;
+    Resources resources;
 
     VkDebugUtilsMessengerEXT debugMessenger;
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
