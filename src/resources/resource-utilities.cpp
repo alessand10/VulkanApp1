@@ -4,6 +4,15 @@
 #include "GLFW/glfw3.h"
 #include "file-utilities.h"
 
+
+void copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void *data, size_t size)
+{
+    void* mappedMemory = nullptr;
+    vkMapMemory(stagingMemory.getApp()->logicalDevice.get(), stagingMemory.get(), 0U, size, 0U, &mappedMemory);
+    memcpy(mappedMemory, data, size);
+    vkUnmapMemory(stagingMemory.getApp()->logicalDevice.get(), stagingMemory.get());
+}
+
 void loadJPEGImage(VulkanApp *app, const char *path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer)
 {
     VkDevice device = app->logicalDevice.get();
@@ -43,7 +52,7 @@ void loadJPEGImage(VulkanApp *app, const char *path, AppImage image, VkCommandBu
     copyDataToStagingMemory(stagingImageMemory, jpegImage.data(), stagingImageMemoryRequirements.size);
 
     // Push the staging image contents to the device-local image
-    stagingImage.transitionLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, commandBuffer, targetLayer);
+    stagingImage.transitionLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, commandBuffer, 0U);
     image.transitionLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, commandBuffer, targetLayer);
     AppImage::copyImage(stagingImage, image, commandBuffer, 0U, targetLayer, 1U, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -71,24 +80,10 @@ AppImageBundle createImageAll(VulkanApp* app, uint32_t width, uint32_t height, A
 
 AppBufferBundle createBufferAll(VulkanApp* app, AppBufferTemplate bufferTemplate, size_t size)
 {
-    AppBufferBundle bundle {};
-    bundle.buffer.init(app, size, bufferTemplate);
-    bundle.deviceMemory.init(app, bundle.buffer);
-    bindBufferToMemory(bundle.buffer, bundle.deviceMemory);
-    return bundle;
-}
-
-void bindBufferToMemory(AppBuffer &buffer, AppDeviceMemory &deviceMemory)
-{
-    THROW(vkBindBufferMemory(buffer.getApp()->logicalDevice.get(), buffer.get(), deviceMemory.get(), 0U), "Failed to bind buffer to memory");
-}
-
-AppBufferBundle createBufferAll(VulkanApp* app, AppBufferTemplate bufferTemplate, size_t size)
-{
     AppBufferBundle bufferBundle {};
     bufferBundle.buffer.init(app, size, bufferTemplate);
     bufferBundle.deviceMemory.init(app, bufferBundle.buffer);
-    bindBufferToMemory(bufferBundle.buffer, bufferBundle.deviceMemory);
+    bufferBundle.buffer.bindToMemory(&bufferBundle.deviceMemory);
     return bufferBundle;
 }
 
@@ -96,14 +91,22 @@ void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer, V
 {
 }
 
-void copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void *data, size_t size)
-{
-    void* mappedMemory = nullptr;
-    vkMapMemory(stagingMemory.getApp()->logicalDevice.get(), stagingMemory.get(), 0U, size, 0U, &mappedMemory);
-    memcpy(mappedMemory, data, size);
-    vkUnmapMemory(stagingMemory.getApp()->logicalDevice.get(), stagingMemory.get());
-}
 
+static VkImageLayout getImageLayoutFromTemplate(AppImageTemplate t) {
+    switch(t) {
+        case AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE : {
+            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        }
+        case AppImageTemplate::STAGING_IMAGE_TEXTURE : {
+            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        }
+        case AppImageTemplate::DEVICE_WRITE_SAMPLED_TEXTURE : {
+            return VK_IMAGE_LAYOUT_GENERAL;
+        }
+        default:
+            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+}
 
 void updateDescriptor(AppImageView imageView, VkDescriptorSet set, uint32_t binding, VkDescriptorType descriptorType, AppSampler sampler)
 {   
@@ -169,20 +172,3 @@ void updateDescriptor(AppBuffer buffer, VkDescriptorSet set, uint32_t size, uint
 //     // Remove this swapchain from the list
 //     swapchains.erase(swapchain.getRef());
 // }
-
-
-static VkImageLayout getImageLayoutFromTemplate(AppImageTemplate t) {
-    switch(t) {
-        case AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE : {
-            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
-        case AppImageTemplate::STAGING_IMAGE_TEXTURE : {
-            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        }
-        case AppImageTemplate::DEVICE_WRITE_SAMPLED_TEXTURE : {
-            return VK_IMAGE_LAYOUT_GENERAL;
-        }
-        default:
-            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    }
-}

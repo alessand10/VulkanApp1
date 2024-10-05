@@ -8,6 +8,7 @@
 #include "command-pool-resource.h"
 #include "instance-resource.h"
 #include "device-resource.h"
+#include "shader-module-resource.h"
 
 void loadJPEGImage(class VulkanApp* app, const char* path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer);
 
@@ -23,8 +24,6 @@ void loadJPEGImage(class VulkanApp* app, const char* path, AppImage image, VkCom
  * Layer 5: Negative Z
  */
 void renderCubeMap(AppImage imageArray);
-
-
 
 struct AppImageBundle {
     AppImage image;

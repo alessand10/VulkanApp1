@@ -2,7 +2,6 @@
 #include "buffer-resource.h"
 #include "device-resource.h"
 
-
 static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, uint32_t size) { 
     switch(t) {
         case AppBufferTemplate::UNIFORM_BUFFER :
@@ -81,6 +80,15 @@ void AppBuffer::init(VulkanApp *app, size_t size, AppBufferTemplate appBufferTem
    AppResource::init(app, app->resources.buffers.create(buffer));
 }
 
+void AppBuffer::bindToMemory(AppDeviceMemory *bufferMemory)
+{
+   VkDevice device = this->getApp()->logicalDevice.get();
+   VkBuffer buffer = get();
+   VkDeviceMemory memory = bufferMemory->get();
+
+   THROW(vkBindBufferMemory(device, buffer, memory, 0U), "Failed to bind image to memory");
+}
+
 void AppBuffer::copyBuffer(AppBuffer &src, AppBuffer &dst, VkCommandBuffer commandBuffer, VkDeviceSize size, VkDeviceSize srcOffset, VkDeviceSize dstOffset)
 {
    VulkanApp* app = src.getApp();
@@ -118,7 +126,7 @@ void AppBuffer::copyBuffer(AppBuffer &src, AppBuffer &dst, VkCommandBuffer comma
    VkFence transferCompleteFence;
    vkCreateFence(app->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
 
-   vkQueueSubmit(app->graphicsQueue, 1U, &submitInfo, transferCompleteFence);
+   vkQueueSubmit(app->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
 
    vkWaitForFences(app->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
 

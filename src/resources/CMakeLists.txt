@@ -17,9 +17,13 @@ add_library(resources   app-resources/buffer-resource.cpp
                         app-resources/shader-module-resource.cpp
                         app-resources/surface-resource.cpp
                         app-resources/swapchain-resource.cpp
+                        resource-utilities.cpp
                     )
 
-target_link_libraries(resources PUBLIC application
+find_package(VulkanHeaders REQUIRED)
+find_package(VulkanLoader REQUIRED)
+target_link_libraries(resources PUBLIC general-utils
+                                PUBLIC application
                                 PUBLIC rendering
                                 PUBLIC geometry)
 

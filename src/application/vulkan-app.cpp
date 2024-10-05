@@ -2,37 +2,68 @@
 #include <iostream>
 #include "GLFW/glfw3.h"
 #include <mesh.h>
+#include "filesystem"
 
 VulkanApp* appHandle;
 
-void VulkanApp::init()
-{
+void VulkanApp::internalInit()
+{   
+    // keep track of the handle to call this app's methods from glfw static callback functions
+    appHandle = this;
+    glfwInit();
+
     // Initialize the vulkan loader
     glfwInitVulkanLoader(vkGetInstanceProcAddr);
 
-    // keep track of the handle to call this app's methods from glfw static callback functions
-    appHandle = this;
+    // Set up some viewport defaults
+    viewportSettings.height = 1080U;
+    viewportSettings.width = 1920U;
+    viewportSettings.minDepth = 0.0f;
+    viewportSettings.maxDepth = 1.0f;
+    viewportSettings.x = 0.0f;
+    viewportSettings.y = 0.0f;
+    viewportSettings.nearPlane = 0.1f;
+    viewportSettings.farPlane = 1000.0f;
+
+    // Create the instance
+    instance.init(this, "Vulkan App", true);
+
+    // Enumerate the physical device and queue families
+    enumeratePhysicalDevice();
+    enumerateQueueFamilies();
+
     createWindow();
 
-    instance.init(this, "Vulkan App", true);
-    
+
     setupDebugMessenger();
 
-    enumeratePhysicalDevice();
-
-    logicalDevice.init(this, physicalDevice);
-    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &graphicsQueue);
-    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &presentQueue);
-    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.compute, 0U, &computeQueue);
+    logicalDevice.init(this, physicalDevice, {}, {"VK_KHR_swapchain"});
+    getQueues();
 
     surface.init(this, window);
+
 
     lastRenderTime = highResClock.now();
 
 }
 
-void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void VulkanApp::internalLoop()
 {
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        processKeyActions();
+
+        // sets deltaTime as the time since the last tickTimer call
+        tickTimer();
+        userTick(deltaTime.count());
+    }
+
+    // Wait for all operations to clear up before exiting so that all objects can be destroyed
+    vkDeviceWaitIdle(logicalDevice.get());
+}
+
+//void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+//{
     // VkCommandBufferBeginInfo beginInfo{};
     // beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     // beginInfo.flags = 0; // Optional
@@ -83,7 +114,7 @@ void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     // if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
     //     throw std::runtime_error("Failed to record command buffer");
     // }
-}
+//}
 
 void VulkanApp::drawFrame(float deltaTime)
 {
@@ -171,19 +202,6 @@ void VulkanApp::drawFrame(float deltaTime)
     // vkQueuePresentKHR(presentQueue, &presentInfo);
 }
 
-void VulkanApp::renderLoop()
-{
-    while (!glfwWindowShouldClose(window)) {
-        glfwPollEvents();
-        processKeyActions();
-        tickTimer();
-        drawFrame(deltaTime.count());
-    }
-
-    // Wait for all operations to clear up before exiting so that all objects can be destroyed
-    vkDeviceWaitIdle(logicalDevice.get());
-}
-
 void VulkanApp::tickTimer()
 {
     deltaTime = std::chrono::duration_cast<std::chrono::duration<double>>(highResClock.now() - lastRenderTime);
@@ -207,7 +225,7 @@ void VulkanApp::appCursorPositionCallback(double xpos, double ypos)
 
     // Get the real world camera angle represented by each pixel (as the vertical angle divided by the number of pixels in screen space).
     // The horizontal angle per pixel is equivalent, provided that the HFOV is VFOV * Aspect Ratio
-    const float radiansPerPixel = appCamera.getVFOV() / windowHeight;
+    const float radiansPerPixel = appCamera.getVFOV() / viewportSettings.height;
 
     // Query mouse button state
     int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
@@ -272,9 +290,53 @@ void VulkanApp::enumeratePhysicalDevice()
 
 }
 
+void VulkanApp::enumerateQueueFamilies()
+{
+    uint32_t queueFamilyPropertyCount = 0U;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyPropertyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyPropertyCount, queueFamilyProperties.data());
+
+    /**
+     * For a resource to be submitted in an operation on a particular queue family, the queue
+     * family must have ownership. If the resource is only ever used in one queue family, it can
+     * keep permanent ownership. Otherwise, if the resource needs to be used in two separate queue
+     * families, then it's ownership must be transferred, so we prefer queue families that support
+     * as many operations as possible.
+     * 
+     * Preference order:
+     * 1. All families supported
+     * 2. Graphics + transfer support (no need to change compute families when dealing with)
+     */
+    
+
+    for (uint32_t index = 0U ; index < queueFamilyProperties.size() ; index++) {
+        VkQueueFamilyProperties properties = queueFamilyProperties[index];
+        
+        // Find the operations supported on this queue
+        bool graphicsSupport = properties.queueFlags & VK_QUEUE_GRAPHICS_BIT;
+        bool computeSupport = properties.queueFlags & VK_QUEUE_COMPUTE_BIT;
+        bool transferSupport = properties.queueFlags & VK_QUEUE_TRANSFER_BIT;
+
+        if (graphicsSupport && computeSupport && transferSupport) {
+            queueFamilyIndices.compute = index;
+            queueFamilyIndices.graphics = index;
+            queueFamilyIndices.transfer = index;
+            break;
+        }
+    }
+}
+
 bool VulkanApp::isPhysicalDeviceSuitable(VkPhysicalDevice device)
 {
     return true;
+}
+
+void VulkanApp::getQueues()
+{
+    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0U, &queues.graphicsQueue);
+    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.compute, 0U, &queues.computeQueue);
+    vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.transfer, 0U, &queues.transferQueue);
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
@@ -320,10 +382,11 @@ void VulkanApp::setupDebugMessenger()
 
 void VulkanApp::createWindow()
 {   
+    glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_ANGLE_PLATFORM_TYPE_VULKAN);
     #ifdef WINDOWS_PLATFORM
         glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WIN32);
     #elif defined(LINUX_PLATFORM)
-        glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_PLATFORM_X11);
+        glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
     #endif
 
     if (!glfwInit()) {
@@ -334,7 +397,7 @@ void VulkanApp::createWindow()
     // over presentation on the window and Vulkan surface creation fails
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
-    window = glfwCreateWindow(windowWidth, windowHeight, "Vulkan App", NULL, NULL);
+    window = glfwCreateWindow(viewportSettings.width, viewportSettings.height, "Vulkan App", NULL, NULL);
 
     glfwSetCursorPosCallback(window, glfwCursorPositionCallback);
     glfwSetKeyCallback(window, glfwKeyCallback);
@@ -345,6 +408,14 @@ void VulkanApp::cleanup()
 {
     DestroyDebugUtilsMessengerEXT(instance.get(), debugMessenger, nullptr);
     glfwDestroyWindow(window);
-    resources.destroyAll(logicalDevice.get());
+    resources.destroyAll(logicalDevice.get(), instance.get());
     glfwTerminate();
+}
+
+int main() {
+    std::filesystem::current_path(XSTRING(SOURCE_ROOT));
+    VulkanApp app;
+    app.internalInit();
+    app.userInit();
+    app.internalLoop();
 }

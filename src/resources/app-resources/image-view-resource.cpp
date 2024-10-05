@@ -82,7 +82,7 @@ static VkImageViewCreateInfo getImageViewCreateInfoFromTemplate(AppImageTemplate
 void AppImageView::init(VulkanApp *app, AppImage &image, uint32_t layerCount, uint32_t baseLayer)
 {
     VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(image.getTemplate(), image.get(), layerCount, baseLayer) };
-
+    imageCreationTemplate = image.getTemplate();
     VkImageView imageView;
     THROW(vkCreateImageView(app->logicalDevice.get(), &createInfo, nullptr, &imageView), "Failed to create image view");
     

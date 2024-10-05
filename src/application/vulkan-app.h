@@ -6,6 +6,8 @@
 #include "geometry-utilities.h"
 #include "resources.h"
 #include <chrono>
+#include "viewport-settings.h"
+#include "queues.h"
 
 struct QueueFamilyIndices {
     uint32_t graphics;
@@ -14,7 +16,7 @@ struct QueueFamilyIndices {
 };
 
 // A constant used around Vulkan operations to throw exceptions when the operations fail
-#define THROW(x,msg) if (x != VK_SUCCESS) throw std::runtime_error(msg);
+#define THROW(x,msg) if (x != VK_SUCCESS) throw std::runtime_error(std::string(msg) + std::string(" - Failed with code: ") + std::to_string(x));
 
 // Used when pulling CMAKE compile definitions
 #define STRING(x) #x
@@ -35,16 +37,12 @@ class VulkanApp {
 
     QueueFamilyIndices queueFamilyIndices;
 
-    uint32_t windowWidth = 1920U;
-    uint32_t windowHeight = 1080U;
+    ViewportSettings viewportSettings;
 
     AppCamera appCamera;
 
-    uint32_t supportedVertexCount = 100u;
-    uint32_t supportedIndexCount = 200u;
-
     /* Vulkan objects*/
-    struct GLFWwindow* window;
+    GLFWwindow* window;
     AppInstance instance;
     VkPhysicalDevice physicalDevice;
     AppDevice logicalDevice;
@@ -52,13 +50,11 @@ class VulkanApp {
     AppSwapchain swapchain;
 
     // Queues to submit particular commands
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-    VkQueue computeQueue;
-
-    uint32_t maxFramesInFlight = 0u;
+    Queues queues;
 
     void enumeratePhysicalDevice();
+    void enumerateQueueFamilies();
+    void getQueues();
 
     /* App helper methods */
     bool isPhysicalDeviceSuitable(VkPhysicalDevice device);
@@ -67,8 +63,6 @@ class VulkanApp {
     void setupDebugMessenger();
     void createWindow();
     void tickTimer();
-
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
     /**
      * Input related methods
@@ -81,11 +75,13 @@ class VulkanApp {
     void appKeyCallback(int key, int scancode, int action, int mods);
     void processKeyActions();
 
+    void internalInit();
+    void internalLoop();
     
     public:
-    void init();
+    void userInit();
     void drawFrame(float deltaTime);
-    void renderLoop();
+    void userTick(double deltaTime);
     void cleanup();
 
 };

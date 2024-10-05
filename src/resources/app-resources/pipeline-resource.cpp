@@ -61,16 +61,16 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float) app->windowWidth;
-    viewport.height = (float) app->windowHeight;
+    viewport.width = (float) app->viewportSettings.width;
+    viewport.height = (float) app->viewportSettings.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     // Configure the scissor (can be used to discard rasterizer pixels)
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent.width = app->windowWidth;
-    scissor.extent.height = app->windowHeight;
+    scissor.extent.width = app->viewportSettings.width;
+    scissor.extent.height = app->viewportSettings.height;
 
     // Since we are dynamically specifying the viewport and scissor struct, theres no need to specify them in the viewport
     // state. We will set these values up later at draw time.

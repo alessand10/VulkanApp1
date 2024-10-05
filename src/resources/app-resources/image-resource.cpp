@@ -85,7 +85,7 @@ VkImageCreateInfo getImageCreateInfoFromTemplate(AppImageTemplate t, uint32_t he
 
 void AppImage::init(VulkanApp *app, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout)
 {
-    this->imageCreationTemplate = imageCreationTemplate;
+    this->imageCreationTemplate = appImageTemplate;
     this->height = height;
     this->width = width;
     this->layout = layout;
@@ -102,7 +102,7 @@ void AppImage::init(VulkanApp *app, AppImageTemplate appImageTemplate, uint32_t 
 
 void AppImage::init(VulkanApp *app, VkImage image, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout)
 {
-    this->imageCreationTemplate = imageCreationTemplate;
+    this->imageCreationTemplate = appImageTemplate;
     this->height = height;
     this->width = width;
     this->layout = layout;
@@ -155,7 +155,7 @@ void AppImage::transitionLayout(VkImageLayout newLayout, VkCommandBuffer command
     submitInfo.pWaitDstStageMask = nullptr;
     submitInfo.waitSemaphoreCount = 0u;
 
-    vkQueueSubmit(app->graphicsQueue, 1U, &submitInfo, transferCompleteFence);
+    vkQueueSubmit(app->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
 
     vkWaitForFences(app->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
 
@@ -229,7 +229,7 @@ void AppImage::copyImage(AppImage &src, AppImage &dst, VkCommandBuffer commandBu
     VkFence transferCompleteFence;
     vkCreateFence(app->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
 
-    vkQueueSubmit(app->graphicsQueue, 1U, &submitInfo, transferCompleteFence);
+    vkQueueSubmit(app->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
 
     vkWaitForFences(app->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
 

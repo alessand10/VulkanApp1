@@ -1,74 +1,82 @@
 #include "vulkan-app.h"
 #include "filesystem"
+#include <iostream>
 
-VulkanApp app;
+AppImageBundle albedo;
+AppImageBundle normal;
 
-// AppImageBundle albedo;
-// AppImageBundle normal;
+struct FragmentPushConst {
+    uint32_t textureIndex = 0u;
+};
 
-// struct FragmentPushConst {
-//     uint32_t textureIndex = 0u;
-// };
+struct VSUniformBuffer {
+    glm::mat4 worldMatrix;
+    glm::mat4 viewMatrix;
+    glm::mat4 projMatrix;
+};
 
-// struct VSUniformBuffer {
-//     glm::mat4 worldMatrix;
-//     glm::mat4 viewMatrix;
-//     glm::mat4 projMatrix;
-// };
+AppImageBundle depthStencilImage;
+VkPipelineLayout pipelineLayout;
+VkRenderPass renderPass;
+AppShaderModule vertexShaderModule;
+AppShaderModule fragmentShaderModule;
+VkPipeline graphicsPipeline;
+AppCommandPool commandPool;
+VkCommandBuffer commandBuffer;
 
-// AppImageBundle depthStencilImage;
-// VkPipelineLayout pipelineLayout;
-// VkRenderPass renderPass;
-// AppShaderModule vertexShaderModule;
-// AppShaderModule fragmentShaderModule;
-// VkPipeline graphicsPipeline;
-// AppCommandPool commandPool;
-// VkCommandBuffer commandBuffer;
+AppBufferBundle stagingVertexBuffer;
+AppBufferBundle deviceVertexBuffer;
 
-// AppBufferBundle stagingVertexBuffer;
-// AppBufferBundle deviceVertexBuffer;
+AppBufferBundle stagingIndexBuffer;
+AppBufferBundle deviceIndexBuffer;
 
-// AppBufferBundle stagingIndexBuffer;
-// AppBufferBundle deviceIndexBuffer;
+std::vector<AppBufferBundle> uniformBuffersVS;
+VkDescriptorSetLayout pipelineDescriptorSetLayout;
+VkDescriptorPool descriptorPool;
+std::vector<VkDescriptorSet> descriptorSetsPerFrame;
 
-// std::vector<AppBufferBundle> uniformBuffersVS;
-// VkDescriptorSetLayout pipelineDescriptorSetLayout;
-// VkDescriptorPool descriptorPool;
-// std::vector<VkDescriptorSet> descriptorSetsPerFrame;
+AppSampler sampler;
 
-// AppSampler sampler;
+// Signal when an image is available
+VkSemaphore imageAvailableSemaphore;
 
-// // Signal when an image is available
-// VkSemaphore imageAvailableSemaphore;
+// Signal when rendering is complete
+VkSemaphore renderingFinishedSemaphore;
 
-// // Signal when rendering is complete
-// VkSemaphore renderingFinishedSemaphore;
+// Fence is used to block execution until rendering of previous frame
+VkFence inFlightFence;
 
-// // Fence is used to block execution until rendering of previous frame
-// VkFence inFlightFence;
+std::vector<void*> mappedUBOs = {};
 
-// std::vector<void*> mappedUBOs = {};
+
+void VulkanApp::userInit() {
+    // Create an app image bundle for the albedo and normal textures
+    albedo = createImageAll(this, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
+    normal = createImageAll(this, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
+
+    // Create a command pool for graphics family command buffers
+    commandPool.init(this, this->queueFamilyIndices.graphics);
+
+    // Allocate a command buffer from the command pool
+    commandBuffer = commandPool.allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+    // Load the brick wall texture into layer 0 of the albedo and normal, respectively
+    loadJPEGImage(this, "../images/alley-brick-wall_albedo.jpg", albedo.image, commandBuffer, 0U);
+    loadJPEGImage(this, "../images/alley-brick-wall_normal-dx.jpg", normal.image, commandBuffer, 0U);
+
+    loadJPEGImage(this, "../images/new-brick-wall-albedo.jpeg", albedo.image, commandBuffer, 1U);
+    loadJPEGImage(this, "../images/new-brick-wall-normal.jpeg", normal.image, commandBuffer, 1U);
+}
+
+void VulkanApp::userTick(double deltaTime) {
+    std::cout << "User tick" << std::endl;
+}
 
 // /**
 //  * Initialize the Vulkan application and all desired resources
 //  */
 // void onInit() {
-//     // Create an app image bundle for the albedo and normal textures
-//     albedo = createImageAll(&app, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
-//     normal = createImageAll(&app, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
-
-    
-//     commandPool.init(&app, app.queueFamilyIndices.graphics);
-    
-//     commandBuffer = commandPool.allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
-//     // Load the brick wall texture into layer 0 of the albedo and normal, respectively
-//     loadJPEGImage(&app, "../images/alley-brick-wall_albedo.jpg", albedo.image, commandBuffer, 0U);
-//     loadJPEGImage(&app, "../images/alley-brick-wall_normal-dx.jpg", normal.image, commandBuffer, 0U);
-
-//     loadJPEGImage(&app, "../images/new-brick-wall-albedo.jpeg", albedo.image, commandBuffer, 1U);
-//     loadJPEGImage(&app, "../images/new-brick-wall-normal.jpeg", normal.image, commandBuffer, 1U);
-
+//
 //     // Create the vertex and index staging buffers
 //     stagingVertexBuffer = createBufferAll(&app, AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * supportedVertexCount);
 //     deviceVertexBuffer = createBufferAll(&app, AppBufferTemplate::VERTEX_BUFFER_DEVICE, sizeof(Vertex) * supportedVertexCount);
@@ -192,11 +200,3 @@ VulkanApp app;
 // }
 
 
-int main() {
-    std::filesystem::current_path(XSTRING(SOURCE_ROOT));
-//     app.init();
-//     app.renderLoop();
-//     app.cleanup();
-    
-//     return 0;
-}

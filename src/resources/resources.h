@@ -41,10 +41,25 @@ class Resources {
     PipelineList pipelines;
     FramebufferList framebuffers;
 
-    void destroyAll(VkDevice device) {
+    void destroyAll(VkDevice device, VkInstance instance) {
         imageViews.destroyAll(device);
         images.destroyAll(device);
-        
-
+        buffers.destroyAll(device);
+        deviceMemorySet.destroyAll(device);
+        samplers.destroyAll(device);
+        descriptorSetLayouts.destroyAll(device);
+        descriptorPools.destroyAll(device);
+        commandPools.destroyAll(device);
+        fences.destroyAll(device);
+        semaphores.destroyAll(device);
+        pipelineLayouts.destroyAll(device);
+        renderPasses.destroyAll(device);
+        shaderModules.destroyAll(device);
+        framebuffers.destroyAll(device);
+        swapchains.destroyAll(device);
+        surfaces.destroyAll(instance);
+        pipelines.destroyAll(device);
+        devices.destroyAll();
+        instances.destroyAll();
     }
 };

@@ -4,7 +4,6 @@
 
 void AppInstance::init(VulkanApp *app, const char* appName, bool enableValidationLayers)
 {
-    AppInstance returnInstance{};
 
     const std::vector<const char*> validationLayers = {
         "VK_LAYER_KHRONOS_validation"
@@ -23,6 +22,7 @@ void AppInstance::init(VulkanApp *app, const char* appName, bool enableValidatio
     
     // Retrieve the vulkan extensions required by glfw
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+  
     std::vector<const char*> extensions = {};
     for (int index = 0 ; index < glfwExtensionCount ; index++) extensions.push_back(glfwExtensions[index]);
 

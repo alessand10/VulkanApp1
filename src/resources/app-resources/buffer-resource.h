@@ -18,6 +18,8 @@ class AppBuffer : public AppResource<VkBuffer> {
     void init(class VulkanApp* app, size_t size, AppBufferTemplate appBufferTemplate);
     AppBufferTemplate getTemplate() { return appBufferTemplate; }
 
+    void bindToMemory(class AppDeviceMemory *bufferMemory);
+
     static void copyBuffer(AppBuffer &src, AppBuffer &dst, VkCommandBuffer commandBuffer, VkDeviceSize size, VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0);
 
     void destroy();

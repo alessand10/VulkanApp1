@@ -36,7 +36,7 @@ void AppSwapchain::init(VulkanApp *app, AppSurface appSurface, uint32_t width, u
     // Retrieve the image count
     THROW(vkGetSwapchainImagesKHR(app->logicalDevice.get(), get(), &swapchainImageCount, NULL), "Failed to retrieve swapchain images");
 
-    app->maxFramesInFlight = swapchainImageCount;
+    imageCount = swapchainImageCount;
 }
 
 std::vector<VkImage> AppSwapchain::getSwapchainImages()
@@ -51,6 +51,11 @@ std::vector<VkImage> AppSwapchain::getSwapchainImages()
     THROW(vkGetSwapchainImagesKHR(this->getApp()->logicalDevice.get(), this->get(), &swapchainImageCount, swapchainImages.data()), "Failed to retrieve swapchain images");
 
     return swapchainImages;
+}
+
+uint32_t AppSwapchain::getImageCount()
+{
+    return imageCount;
 }
 
 void AppSwapchain::destroy()

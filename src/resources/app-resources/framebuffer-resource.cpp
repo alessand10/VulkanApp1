@@ -9,8 +9,8 @@ void AppFramebuffer::init(VulkanApp *app, VkRenderPass renderPass, std::vector<V
     createInfo.renderPass = renderPass;
     createInfo.attachmentCount = attachmentViews.size();
     createInfo.pAttachments = attachmentViews.data();
-    createInfo.width = app->windowWidth;
-    createInfo.height = app->windowHeight;
+    createInfo.width = app->viewportSettings.width;
+    createInfo.height = app->viewportSettings.height;
     createInfo.layers = 1;
     
     VkFramebuffer framebuffer;
