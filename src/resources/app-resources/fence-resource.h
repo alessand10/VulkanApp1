@@ -3,7 +3,7 @@
 
 class AppFence : AppResource<VkFence> {
     public:
-    void init(VulkanApp* app, VkFenceCreateFlags flags = 0U);
+    void init(class VulkanApp* app, VkFenceCreateFlags flags = 0U);
 
-    void destroy() { getApp()->resources.fences.destroy(getIterator(), getApp()->logicalDevice.get()); }
+    void destroy();
 };

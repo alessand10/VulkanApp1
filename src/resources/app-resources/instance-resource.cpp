@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "instance-resource.h"
 #include "GLFW/glfw3.h"
 
@@ -48,4 +49,9 @@ void AppInstance::init(VulkanApp *app, const char* appName, bool enableValidatio
     THROW(vkCreateInstance(&instanceCreateInfo, nullptr, &instance), "Failed to create Vulkan instance");
 
     AppResource::init(app, app->resources.instances.create(instance));
+}
+
+void AppInstance::destroy()
+{
+    getApp()->resources.instances.destroy(getIterator());
 }

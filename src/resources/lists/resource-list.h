@@ -11,8 +11,8 @@ protected:
     }
 
 public:
-    std::list<T>::iterator create(T resource) = {
+    typename std::list<T>::iterator create(T resource){
         resourceList.push_front(resource);
-        return resourceList.front();
+        return resourceList.begin();
     };
 };

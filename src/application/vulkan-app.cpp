@@ -14,18 +14,18 @@ void VulkanApp::init()
     appHandle = this;
     createWindow();
 
-    instance = resourceManager.createInstance("Vulkan App", true);
+    instance.init(this, "Vulkan App", true);
     
     setupDebugMessenger();
 
     enumeratePhysicalDevice();
 
-    logicalDevice = resourceManager.createDevice(physicalDevice, &queueFamilyIndices);
+    logicalDevice.init(this, physicalDevice);
     vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &graphicsQueue);
     vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.graphics, 0, &presentQueue);
     vkGetDeviceQueue(logicalDevice.get(), queueFamilyIndices.compute, 0U, &computeQueue);
 
-    surface = resourceManager.createSurface(instance, window);
+    surface.init(this, window);
 
     lastRenderTime = highResClock.now();
 
@@ -33,56 +33,56 @@ void VulkanApp::init()
 
 void VulkanApp::recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.flags = 0; // Optional
-    beginInfo.pInheritanceInfo = nullptr; // Optional
+    // VkCommandBufferBeginInfo beginInfo{};
+    // beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    // beginInfo.flags = 0; // Optional
+    // beginInfo.pInheritanceInfo = nullptr; // Optional
 
-    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to begin recording command buffer");
-    }
+    // if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+    //     throw std::runtime_error("Failed to begin recording command buffer");
+    // }
 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = renderPass;
-    renderPassInfo.framebuffer = swapchain.framebuffers[imageIndex].get();
-    renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent.width = windowWidth;
-    renderPassInfo.renderArea.extent.height = windowHeight;
+    // VkRenderPassBeginInfo renderPassInfo{};
+    // renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    // renderPassInfo.renderPass = renderPass;
+    // renderPassInfo.framebuffer = swapchain.framebuffers[imageIndex].get();
+    // renderPassInfo.renderArea.offset = {0, 0};
+    // renderPassInfo.renderArea.extent.width = windowWidth;
+    // renderPassInfo.renderArea.extent.height = windowHeight;
 
-    VkClearValue clearValues[2]{};
-    clearValues[0].color = {{0.f, 0.f, 0.f, 1.f}};
-    clearValues[1].depthStencil = {1.f, 0u};
-    renderPassInfo.clearValueCount = 2;
-    renderPassInfo.pClearValues = clearValues;
+    // VkClearValue clearValues[2]{};
+    // clearValues[0].color = {{0.f, 0.f, 0.f, 1.f}};
+    // clearValues[1].depthStencil = {1.f, 0u};
+    // renderPassInfo.clearValueCount = 2;
+    // renderPassInfo.pClearValues = clearValues;
 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+    // vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+    // vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-    // Push the texture constants
-    FragmentPushConst pc {1U};
-    vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst), &pc);
+    // // Push the texture constants
+    // FragmentPushConst pc {1U};
+    // vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst), &pc);
 
-    VkDeviceSize offsets[] = {0UL};
-    VkBuffer vertexBuffers[] = {deviceVertexBuffer.buffer.get()};
-    vkCmdBindVertexBuffers(commandBuffer, 0u, 1u, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, deviceIndexBuffer.buffer.get(), 0u, VkIndexType::VK_INDEX_TYPE_UINT32);
+    // VkDeviceSize offsets[] = {0UL};
+    // VkBuffer vertexBuffers[] = {deviceVertexBuffer.buffer.get()};
+    // vkCmdBindVertexBuffers(commandBuffer, 0u, 1u, vertexBuffers, offsets);
+    // vkCmdBindIndexBuffer(commandBuffer, deviceIndexBuffer.buffer.get(), 0u, VkIndexType::VK_INDEX_TYPE_UINT32);
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0u, 1u, &(descriptorSetsPerFrame[imageIndex]),
-    0, nullptr);
+    // vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0u, 1u, &(descriptorSetsPerFrame[imageIndex]),
+    // 0, nullptr);
 
-    uint32_t meshCount = meshManager.getMeshCount();
-    for (uint32_t meshIndex = 0U ; meshIndex < meshCount ; meshIndex++) {
-        GeometryManager::MeshInsertion insertion = meshManager.getMeshInsertionAtIndex(meshIndex);
-        vkCmdDrawIndexed(commandBuffer, insertion.indexCount, 1u, insertion.indexOffset, insertion.vertexOffset, 0u);
-    }
+    // uint32_t meshCount = meshManager.getMeshCount();
+    // for (uint32_t meshIndex = 0U ; meshIndex < meshCount ; meshIndex++) {
+    //     GeometryManager::MeshInsertion insertion = meshManager.getMeshInsertionAtIndex(meshIndex);
+    //     vkCmdDrawIndexed(commandBuffer, insertion.indexCount, 1u, insertion.indexOffset, insertion.vertexOffset, 0u);
+    // }
 
-    vkCmdEndRenderPass(commandBuffer);
+    // vkCmdEndRenderPass(commandBuffer);
 
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to record command buffer");
-    }
+    // if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+    //     throw std::runtime_error("Failed to record command buffer");
+    // }
 }
 
 void VulkanApp::drawFrame(float deltaTime)
@@ -100,75 +100,75 @@ void VulkanApp::drawFrame(float deltaTime)
      */
 
     // Step 1. Wait for the previous frame to render
-    vkWaitForFences(logicalDevice.get(), 1, &inFlightFence, VK_TRUE, UINT32_MAX);
+    // vkWaitForFences(logicalDevice.get(), 1, &inFlightFence, VK_TRUE, UINT32_MAX);
 
-    //computeShaderWriteCommandBuffer(&resourceManager);
+    // //computeShaderWriteCommandBuffer(&resourceManager);
 
-    // Step 2. Aquire an image from the swap chain (well an index to it actually)
-    uint32_t freeImageIndex;
-    VkResult acquireImageResult = vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &freeImageIndex);
-    if (acquireImageResult == VK_ERROR_OUT_OF_DATE_KHR || acquireImageResult == VK_SUBOPTIMAL_KHR) {
-        resourceManager.destroySwapchain(swapchain);
+    // // Step 2. Aquire an image from the swap chain (well an index to it actually)
+    // uint32_t freeImageIndex;
+    // VkResult acquireImageResult = vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &freeImageIndex);
+    // if (acquireImageResult == VK_ERROR_OUT_OF_DATE_KHR || acquireImageResult == VK_SUBOPTIMAL_KHR) {
+    //     resourceManager.destroySwapchain(swapchain);
 
-        // Recreate swapchain
-        swapchain = resourceManager.createSwapchain();
+    //     // Recreate swapchain
+    //     swapchain = resourceManager.createSwapchain();
 
-        // Recreate all framebuffers
-        for (uint32_t frame = 0U ; frame < maxFramesInFlight ; frame)
-            swapchain.framebuffers.push_back(resourceManager.createFramebuffer(renderPass, {swapchain.swapchainImageViews[frame].get(), depthStencilImage.imageView.get()}));
-        return;
-    }
-    else if (acquireImageResult != VK_SUCCESS) {
-        throw std::runtime_error("Failed to acquire a swapchain image");
-    }
+    //     // Recreate all framebuffers
+    //     for (uint32_t frame = 0U ; frame < maxFramesInFlight ; frame)
+    //         swapchain.framebuffers.push_back(resourceManager.createFramebuffer(renderPass, {swapchain.swapchainImageViews[frame].get(), depthStencilImage.imageView.get()}));
+    //     return;
+    // }
+    // else if (acquireImageResult != VK_SUCCESS) {
+    //     throw std::runtime_error("Failed to acquire a swapchain image");
+    // }
 
-    // Return fence to unsignaled state (only if we know we successfully retrieved an image, otherwise we may end up in a deadlock)
-    vkResetFences(logicalDevice.get(), 1, &inFlightFence);
+    // // Return fence to unsignaled state (only if we know we successfully retrieved an image, otherwise we may end up in a deadlock)
+    // vkResetFences(logicalDevice.get(), 1, &inFlightFence);
 
-    // Step 3. Record a command buffer to draw the scene onto the image
-    vkResetCommandBuffer(commandBuffer, 0U);
-    recordCommandBuffer(commandBuffer, freeImageIndex);
+    // // Step 3. Record a command buffer to draw the scene onto the image
+    // vkResetCommandBuffer(commandBuffer, 0U);
+    // recordCommandBuffer(commandBuffer, freeImageIndex);
 
-    // Step 4. Submit the command buffer to be run
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    // // Step 4. Submit the command buffer to be run
+    // VkSubmitInfo submitInfo{};
+    // submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
-    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-    submitInfo.waitSemaphoreCount = 1;
-    submitInfo.pWaitSemaphores = waitSemaphores;
-    submitInfo.pWaitDstStageMask = waitStages;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    // VkSemaphore waitSemaphores[] = {imageAvailableSemaphore};
+    // VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    // submitInfo.waitSemaphoreCount = 1;
+    // submitInfo.pWaitSemaphores = waitSemaphores;
+    // submitInfo.pWaitDstStageMask = waitStages;
+    // submitInfo.commandBufferCount = 1;
+    // submitInfo.pCommandBuffers = &commandBuffer;
 
-    VkSemaphore signalSemaphores[] = {renderingFinishedSemaphore};
-    submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = signalSemaphores;
-    submitInfo.pNext = nullptr;
+    // VkSemaphore signalSemaphores[] = {renderingFinishedSemaphore};
+    // submitInfo.signalSemaphoreCount = 1;
+    // submitInfo.pSignalSemaphores = signalSemaphores;
+    // submitInfo.pNext = nullptr;
 
-    VSUniformBuffer ubo;
-    ubo.viewMatrix = appCamera.getViewMatrix();
-    ubo.projMatrix = appCamera.getProjMatrix();
-    memcpy(mappedUBOs[freeImageIndex], &ubo, sizeof(VSUniformBuffer));
+    // VSUniformBuffer ubo;
+    // ubo.viewMatrix = appCamera.getViewMatrix();
+    // ubo.projMatrix = appCamera.getProjMatrix();
+    // memcpy(mappedUBOs[freeImageIndex], &ubo, sizeof(VSUniformBuffer));
 
-    VkResult res = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence);
-    if (res != VK_SUCCESS) {
-        throw std::runtime_error("Failed to submit draw command buffer");
-    }
+    // VkResult res = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFence);
+    // if (res != VK_SUCCESS) {
+    //     throw std::runtime_error("Failed to submit draw command buffer");
+    // }
 
-    // Step 5. Present the new swap chain image
-    VkPresentInfoKHR presentInfo{};
-    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = signalSemaphores;
+    // // Step 5. Present the new swap chain image
+    // VkPresentInfoKHR presentInfo{};
+    // presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    // presentInfo.waitSemaphoreCount = 1;
+    // presentInfo.pWaitSemaphores = signalSemaphores;
 
-    VkSwapchainKHR swapChains[] = {swapchain.get()};
-    presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = swapChains;
-    presentInfo.pImageIndices = &freeImageIndex;
-    presentInfo.pResults = nullptr;
+    // VkSwapchainKHR swapChains[] = {swapchain.get()};
+    // presentInfo.swapchainCount = 1;
+    // presentInfo.pSwapchains = swapChains;
+    // presentInfo.pImageIndices = &freeImageIndex;
+    // presentInfo.pResults = nullptr;
 
-    vkQueuePresentKHR(presentQueue, &presentInfo);
+    // vkQueuePresentKHR(presentQueue, &presentInfo);
 }
 
 void VulkanApp::renderLoop()
@@ -345,6 +345,6 @@ void VulkanApp::cleanup()
 {
     DestroyDebugUtilsMessengerEXT(instance.get(), debugMessenger, nullptr);
     glfwDestroyWindow(window);
-    resourceManager.destroy();
+    resources.destroyAll(logicalDevice.get());
     glfwTerminate();
 }

@@ -1,7 +1,8 @@
+#include "vulkan-app.h"
 #include "pipeline-resource.h"
 #include "vertex.h"
 
-void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModules, VkPipelineLayout pipelineLayout, VkRenderPass renderPass)
+void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass)
 {
     // Configure vertex buffer binding
 
@@ -136,9 +137,9 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
         shaderStageCreateInfos.back().sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStageCreateInfos.back().pNext = nullptr;
         shaderStageCreateInfos.back().flags = 0U;
-        shaderStageCreateInfos.back().module = appShaderModule.shaderModule;
+        shaderStageCreateInfos.back().module = appShaderModule.get();
         shaderStageCreateInfos.back().pName = "main";
-        shaderStageCreateInfos.back().stage = appShaderModule.shaderStage;
+        shaderStageCreateInfos.back().stage = appShaderModule.getShaderStage();
         shaderStageCreateInfos.back().pSpecializationInfo = nullptr;
     }
 
@@ -164,8 +165,8 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
     colorSubpassPipelineInfo.pDepthStencilState = &dsStateCreateInfo; // Optional
     colorSubpassPipelineInfo.pColorBlendState = &colorBlending;
     colorSubpassPipelineInfo.pDynamicState = nullptr;
-    colorSubpassPipelineInfo.layout = pipelineLayout;
-    colorSubpassPipelineInfo.renderPass = renderPass;
+    colorSubpassPipelineInfo.layout = pipelineLayout.get();
+    colorSubpassPipelineInfo.renderPass = renderPass.get();
     colorSubpassPipelineInfo.subpass = 0;
     colorSubpassPipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     colorSubpassPipelineInfo.basePipelineIndex = -1; // Optional
@@ -174,4 +175,9 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
     THROW(vkCreateGraphicsPipelines(app->logicalDevice.get(), VK_NULL_HANDLE, 1, &colorSubpassPipelineInfo, NULL, &pipeline), "Failed to create graphics pipeline");
 
     AppResource::init(app, app->resources.pipelines.create(pipeline));
+}
+
+void AppPipeline::destroy()
+{
+    getApp()->resources.pipelines.destroy(getIterator(), getApp()->logicalDevice.get());
 }

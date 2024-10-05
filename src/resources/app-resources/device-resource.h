@@ -3,7 +3,7 @@
 
 class AppDevice : public AppResource<VkDevice> {
     public:
-    void init(VulkanApp* app);
+    void init(class VulkanApp* app, VkPhysicalDevice physicalDevice);
     
-    void destroy() { getApp()->resources.devices.destroy(getIterator()); }
+    void destroy();
 };

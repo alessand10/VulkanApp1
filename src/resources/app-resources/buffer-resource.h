@@ -15,10 +15,10 @@ class AppBuffer : public AppResource<VkBuffer> {
     AppBufferTemplate appBufferTemplate = AppBufferTemplate::UNIFORM_BUFFER;
     size_t size;
     public:
-    void init(VulkanApp* app, size_t size, AppBufferTemplate appBufferTemplate);
+    void init(class VulkanApp* app, size_t size, AppBufferTemplate appBufferTemplate);
     AppBufferTemplate getTemplate() { return appBufferTemplate; }
 
     static void copyBuffer(AppBuffer &src, AppBuffer &dst, VkCommandBuffer commandBuffer, VkDeviceSize size, VkDeviceSize srcOffset = 0, VkDeviceSize dstOffset = 0);
 
-    void destroy() { getApp()->resources.buffers.destroy(getIterator(), getApp()->logicalDevice.get()); }
+    void destroy();
 };

@@ -8,6 +8,6 @@ enum class AppSamplerTemplate {
 class AppSampler : public AppResource<VkSampler> {
     AppSamplerTemplate samplerTemplate;
     public:
-    void init(VulkanApp* app, AppSamplerTemplate samplerTemplate);
-    void destroy() { getApp()->resources.samplers.destroy(getIterator(), getApp()->logicalDevice.get()); }
+    void init(class VulkanApp* app, AppSamplerTemplate samplerTemplate);
+    void destroy();
 };

@@ -1,5 +1,4 @@
 #pragma once
-#include "vulkan/vulkan.hpp"
 #include "glm/glm.hpp"
 #include "camera.h"
 #include <map>
@@ -7,6 +6,12 @@
 #include "geometry-utilities.h"
 #include "resources.h"
 #include <chrono>
+
+struct QueueFamilyIndices {
+    uint32_t graphics;
+    uint32_t compute;
+    uint32_t transfer;
+};
 
 // A constant used around Vulkan operations to throw exceptions when the operations fail
 #define THROW(x,msg) if (x != VK_SUCCESS) throw std::runtime_error(msg);

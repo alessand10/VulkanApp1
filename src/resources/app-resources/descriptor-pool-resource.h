@@ -1,9 +1,18 @@
 #pragma once
 #include "app-resource.h"
+#include <map>
+
+
+enum class AppDescriptorItemTemplate {
+    VS_UNIFORM_BUFFER,
+    CS_UNIFORM_BUFFER,
+    FS_SAMPLED_IMAGE_WITH_SAMPLER,
+    CS_STORAGE_IMAGE,
+};
 
 class AppDescriptorPool : public AppResource<VkDescriptorPool> {
     uint32_t maxSetsCount;
-    std::map<AppDescriptorItemTemplate, uint32_t> descriptorTypeCounts;
+    std::map<VkDescriptorType, uint32_t> descriptorTypeCounts;
     public:
 
     /**
@@ -13,7 +22,7 @@ class AppDescriptorPool : public AppResource<VkDescriptorPool> {
      * @param maxSetsCount The total number of descriptors sets that can be allocated from this pool
      * @param descriptorTypeCounts A map specifying the total number of each descriptor type that can be allocated across all descriptor sets
      */
-    void init(VulkanApp* app, uint32_t maxSetsCount, std::map<AppDescriptorItemTemplate, uint32_t> descriptorTypeCounts);
+    void init(VulkanApp* app, uint32_t maxSetsCount, std::map<VkDescriptorType, uint32_t> descriptorTypeCounts);
     
 
     /**
@@ -24,5 +33,5 @@ class AppDescriptorPool : public AppResource<VkDescriptorPool> {
      */
     VkDescriptorSet allocateDescriptorSet(VkDescriptorSetLayout descriptorSetLayout);
 
-    void destroy() { getApp()->resources.descriptorPools.destroy(getIterator(), getApp()->logicalDevice.get()); }
+    void destroy();
 };

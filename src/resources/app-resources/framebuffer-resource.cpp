@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "framebuffer-resource.h"
 
 void AppFramebuffer::init(VulkanApp *app, VkRenderPass renderPass, std::vector<VkImageView> attachmentViews)
@@ -16,4 +17,9 @@ void AppFramebuffer::init(VulkanApp *app, VkRenderPass renderPass, std::vector<V
     THROW(vkCreateFramebuffer(app->logicalDevice.get(), &createInfo, NULL, &framebuffer), "Failed to create framebuffer");
 
     AppResource::init(app, app->resources.framebuffers.create(framebuffer));
+}
+
+void AppFramebuffer::destroy()
+{
+    getApp()->resources.framebuffers.destroy(getIterator(), getApp()->logicalDevice.get());
 }

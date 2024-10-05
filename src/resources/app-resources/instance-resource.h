@@ -1,9 +1,9 @@
 #pragma once
 #include "app-resource.h"
 
-class AppInstance : AppResource<VkInstance> {
+class AppInstance : public AppResource<VkInstance> {
     public:
-    void init(VulkanApp* app, const char* appName, bool enableValidationLayers);
+    void init(class VulkanApp* app, const char* appName, bool enableValidationLayers);
     
-    void destroy() { getApp()->resources.instances.destroy(getIterator()); }
+    void destroy();
 };

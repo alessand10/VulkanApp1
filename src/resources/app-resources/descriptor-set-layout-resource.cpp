@@ -1,11 +1,12 @@
+#include "vulkan-app.h"
 #include "descriptor-set-layout-resource.h"
 
-void AppDescriptorSetLayout::init(VulkanApp *app, std::vector<AppDescriptorItemTemplate> descriptorItems)
+void AppDescriptorSetLayout::init(VulkanApp *app, std::vector<DescriptorItem> descriptorItems)
 {
     uint32_t index = 0U;
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {};
-    for (AppDescriptorItemTemplate descriptorItem : descriptorItems) {
-        VkDescriptorType descriptorType = getDescriptorTypeFromTemplate(descriptorItem);
+    for (DescriptorItem descriptorItem : descriptorItems) {
+        VkDescriptorType descriptorType = descriptorItem.descriptorType;
         if (layoutBindings.size() > 0 && layoutBindings[index - 1].descriptorType == descriptorType && false)
             layoutBindings[index - 1].descriptorCount++;
         else {
@@ -20,7 +21,7 @@ void AppDescriptorSetLayout::init(VulkanApp *app, std::vector<AppDescriptorItemT
             layoutBindings.push_back(VkDescriptorSetLayoutBinding{});
             layoutBindings.back().binding = index;
             layoutBindings.back().descriptorCount = 1U;
-            layoutBindings.back().stageFlags = getDescriptorStageFlagFromTemplate(descriptorItem);
+            layoutBindings.back().stageFlags = descriptorItem.shaderStage;
             layoutBindings.back().descriptorType = descriptorType;
             layoutBindings.back().pImmutableSamplers = nullptr;
         }
@@ -39,4 +40,42 @@ void AppDescriptorSetLayout::init(VulkanApp *app, std::vector<AppDescriptorItemT
     THROW(vkCreateDescriptorSetLayout(app->logicalDevice.get(), &createInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout");
     
     AppResource::init(app, app->resources.descriptorSetLayouts.create(descriptorSetLayout));
+}
+
+void AppDescriptorSetLayout::destroy()
+{
+    getApp()->resources.descriptorSetLayouts.destroy(getIterator(), getApp()->logicalDevice.get());
+}
+
+static VkDescriptorType getDescriptorTypeFromTemplate(AppDescriptorItemTemplate t) {
+    switch(t) {
+        case AppDescriptorItemTemplate::VS_UNIFORM_BUFFER:
+        case AppDescriptorItemTemplate::CS_UNIFORM_BUFFER:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        
+        case AppDescriptorItemTemplate::FS_SAMPLED_IMAGE_WITH_SAMPLER : {
+            return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        }
+        case AppDescriptorItemTemplate::CS_STORAGE_IMAGE : {
+            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        }
+        default:
+            return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    }
+}
+
+static VkShaderStageFlags getDescriptorStageFlagFromTemplate(AppDescriptorItemTemplate t) {
+    switch(t) {
+        case AppDescriptorItemTemplate::VS_UNIFORM_BUFFER : {
+            return VK_SHADER_STAGE_VERTEX_BIT;
+        }
+        case AppDescriptorItemTemplate::FS_SAMPLED_IMAGE_WITH_SAMPLER : {
+            return VK_SHADER_STAGE_FRAGMENT_BIT;
+        }
+        case AppDescriptorItemTemplate::CS_UNIFORM_BUFFER:
+        case AppDescriptorItemTemplate::CS_STORAGE_IMAGE:
+            return VK_SHADER_STAGE_COMPUTE_BIT;
+        default:
+            return VK_SHADER_STAGE_VERTEX_BIT;
+    }
 }

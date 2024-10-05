@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "device-memory-resource.h"
 #include "buffer-resource.h"
 #include "image-resource.h"
@@ -82,4 +83,9 @@ void AppDeviceMemory::init(VulkanApp *app, AppImage image)
     THROW(vkAllocateMemory(app->logicalDevice.get(), &allocInfo, nullptr, &deviceMemory), "Failed to allocate image memory");
 
     AppResource::init(app, app->resources.deviceMemorySet.create(deviceMemory));
+}
+
+void AppDeviceMemory::destroy()
+{
+    getApp()->resources.deviceMemorySet.destroy(getIterator(), getApp()->logicalDevice.get()); 
 }

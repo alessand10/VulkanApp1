@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "command-pool-resource.h"
 
 void AppCommandPool::init(VulkanApp *app, uint32_t queueFamilyIndex)
@@ -29,4 +30,9 @@ VkCommandBuffer AppCommandPool::allocateCommandBuffer(VkCommandBufferLevel level
     VkCommandBuffer buffer;
     THROW(vkAllocateCommandBuffers(app->logicalDevice.get(), &allocInfo, &buffer), "Failed to allocate command buffer");
     return buffer;
+}
+
+void AppCommandPool::destroy()
+{
+    getApp()->resources.commandPools.destroy(getIterator(), getApp()->logicalDevice.get()); 
 }

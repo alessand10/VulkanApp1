@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "semaphore-resource.h"
 
 void AppSemaphore::init(VulkanApp *app)
@@ -8,4 +9,9 @@ void AppSemaphore::init(VulkanApp *app)
     VkSemaphore semaphore = VK_NULL_HANDLE;
     THROW(vkCreateSemaphore(app->logicalDevice.get(), &createInfo, nullptr, &semaphore), "Failed to create semaphore");
     AppResource::init(app, app->resources.semaphores.create(semaphore));
+}
+
+void AppSemaphore::destroy()
+{
+    getApp()->resources.semaphores.destroy(getIterator(), getApp()->logicalDevice.get());
 }

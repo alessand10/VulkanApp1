@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "shader-module-resource.h"
 
 void AppShaderModule::init(VulkanApp *app, std::vector<char> bytecode, VkShaderStageFlagBits shaderStageFlags)
@@ -13,4 +14,9 @@ void AppShaderModule::init(VulkanApp *app, std::vector<char> bytecode, VkShaderS
     THROW(vkCreateShaderModule(app->logicalDevice.get(), &shaderModuleCreateInfo, NULL, &shaderModule), "Failed to create shader module");
 
     AppResource::init(app, app->resources.shaderModules.create(shaderModule));
+}
+
+void AppShaderModule::destroy()
+{
+    getApp()->resources.shaderModules.destroy(getIterator(), getApp()->logicalDevice.get());
 }

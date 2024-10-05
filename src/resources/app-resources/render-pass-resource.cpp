@@ -1,6 +1,76 @@
+#include "vulkan-app.h"
 #include "render-pass-resource.h"
 
-void AppRenderPass::init(VulkanApp *app, std::vector<AppAttachment> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies)
+
+static AttachmentType getAttachmentTypeFromTemplate(AttachmentTemplate t) {
+    switch (t) {
+        case AttachmentTemplate::SWAPCHAIN_COLOR_ATTACHMENT: 
+        case AttachmentTemplate::APP_TEXTURE_COLOR_ATTACHMENT: 
+            return AttachmentType::COLOR;
+        case AttachmentTemplate::SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT:
+            return AttachmentType::DEPTH_STENCIL;
+        default: return AttachmentType::COLOR;
+    }
+}
+
+static VkAttachmentDescription getAttachmentDescriptionFromTemplate(AttachmentTemplate t) {
+    /**
+     * flags;
+     * format;
+     * samples;
+     * loadOp;
+     * storeOp;
+     * stencilLoadOp;
+     * stencilStoreOp;
+     * initialLayout;
+     * finalLayout;
+     */
+    switch(t) {
+        case AttachmentTemplate::SWAPCHAIN_COLOR_ATTACHMENT : {
+            return {
+                0U,
+                VK_FORMAT_B8G8R8A8_SRGB,
+                VK_SAMPLE_COUNT_1_BIT,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_STORE,
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+            };
+        }
+        case AttachmentTemplate::SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT : {
+            return {
+                0U,
+                VK_FORMAT_D32_SFLOAT_S8_UINT,
+                VK_SAMPLE_COUNT_1_BIT,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_STORE,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+            };
+        }
+        case AttachmentTemplate::APP_TEXTURE_COLOR_ATTACHMENT : {
+            return {
+                0U,
+                VK_FORMAT_R8G8B8A8_UNORM,
+                VK_SAMPLE_COUNT_1_BIT,
+                VK_ATTACHMENT_LOAD_OP_CLEAR,
+                VK_ATTACHMENT_STORE_OP_STORE,
+                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                VK_IMAGE_LAYOUT_UNDEFINED,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            };
+        }
+        default : 
+        return {};
+    }
+}
+
+void AppRenderPass::init(VulkanApp *app, std::vector<AttachmentTemplate> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies)
 {
     VkRenderPassCreateInfo renderPassInfo{};
     std::vector<VkAttachmentDescription> attachmentDescriptions = {};
@@ -10,8 +80,8 @@ void AppRenderPass::init(VulkanApp *app, std::vector<AppAttachment> attachments,
     std::vector<std::vector<VkAttachmentReference>> colorAttachmentReferences = {};
     std::vector<std::vector<VkAttachmentReference>> depthStencilAttachmentReferences = {};
     
-    for (AppAttachment attachment : attachments) {
-        attachmentDescriptions.push_back(getAttachmentDescriptionFromTemplate(attachment.attachmentTemplate));
+    for (AttachmentTemplate attachment : attachments) {
+        attachmentDescriptions.push_back(getAttachmentDescriptionFromTemplate(attachment));
     }
 
     for (AppSubpass subpass : subpasses) {
@@ -20,7 +90,7 @@ void AppRenderPass::init(VulkanApp *app, std::vector<AppAttachment> attachments,
         subpassDescriptions.push_back(VkSubpassDescription{});
 
         for (AppSubpassAttachmentRef ref : subpass.attachmentRefs) {
-            AttachmentType attachmentType = getAttachmentTypeFromTemplate(attachments[ref.attachmentIndex].attachmentTemplate);
+            AttachmentType attachmentType = getAttachmentTypeFromTemplate(attachments[ref.attachmentIndex]);
             if (attachmentType == AttachmentType::COLOR) {
                 colorAttachmentReferences.back().push_back(VkAttachmentReference{});
                 colorAttachmentReferences.back().back().attachment = ref.attachmentIndex;
@@ -55,70 +125,7 @@ void AppRenderPass::init(VulkanApp *app, std::vector<AppAttachment> attachments,
     AppResource::init(app, app->resources.renderPasses.create(renderPass));
 }
 
-static AttachmentType getAttachmentTypeFromTemplate(AppAttachmentTemplate t) {
-    switch (t) {
-        case AppAttachmentTemplate::SWAPCHAIN_COLOR_ATTACHMENT: 
-        case AppAttachmentTemplate::APP_TEXTURE_COLOR_ATTACHMENT: 
-            return AttachmentType::COLOR;
-        case AppAttachmentTemplate::SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT:
-            return AttachmentType::DEPTH_STENCIL;
-        default: return AttachmentType::COLOR;
-    }
-}
-
-static VkAttachmentDescription getAttachmentDescriptionFromTemplate(AppAttachmentTemplate t) {
-    /**
-     * flags;
-     * format;
-     * samples;
-     * loadOp;
-     * storeOp;
-     * stencilLoadOp;
-     * stencilStoreOp;
-     * initialLayout;
-     * finalLayout;
-     */
-    switch(t) {
-        case AppAttachmentTemplate::SWAPCHAIN_COLOR_ATTACHMENT : {
-            return {
-                0U,
-                VK_FORMAT_B8G8R8A8_SRGB,
-                VK_SAMPLE_COUNT_1_BIT,
-                VK_ATTACHMENT_LOAD_OP_CLEAR,
-                VK_ATTACHMENT_STORE_OP_STORE,
-                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-            };
-        }
-        case AppAttachmentTemplate::SWAPCHAIN_DEPTH_STENCIL_ATTACHMENT : {
-            return {
-                0U,
-                VK_FORMAT_D32_SFLOAT_S8_UINT,
-                VK_SAMPLE_COUNT_1_BIT,
-                VK_ATTACHMENT_LOAD_OP_CLEAR,
-                VK_ATTACHMENT_STORE_OP_STORE,
-                VK_ATTACHMENT_LOAD_OP_CLEAR,
-                VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-            };
-        }
-        case AppAttachmentTemplate::APP_TEXTURE_COLOR_ATTACHMENT : {
-            return {
-                0U,
-                VK_FORMAT_R8G8B8A8_UNORM,
-                VK_SAMPLE_COUNT_1_BIT,
-                VK_ATTACHMENT_LOAD_OP_CLEAR,
-                VK_ATTACHMENT_STORE_OP_STORE,
-                VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                VK_IMAGE_LAYOUT_UNDEFINED,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-            };
-        }
-        default : 
-        return {};
-    }
+void AppRenderPass::destroy()
+{
+    getApp()->resources.renderPasses.destroy(getIterator(), getApp()->logicalDevice.get());
 }

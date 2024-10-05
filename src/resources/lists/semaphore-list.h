@@ -7,4 +7,5 @@ class SemaphoreList : public ResourceList<VkSemaphore> {
         vkDestroySemaphore(device, *it, nullptr);
         ResourceList::destroy(it);
     }
+    void destroyAll(VkDevice device) {for (auto it = resourceList.begin(); it != resourceList.end(); it++) destroy(it, device);}
 };

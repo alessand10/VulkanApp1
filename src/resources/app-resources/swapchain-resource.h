@@ -6,7 +6,7 @@
 
 class AppSwapchain : public AppResource<VkSwapchainKHR> {
     public:
-    void init(VulkanApp *app, AppSurface appSurface, uint32_t width, uint32_t height);
+    void init(class VulkanApp *app, AppSurface appSurface, uint32_t width, uint32_t height);
     
     /**
      * @brief Retrieves all images in the swapchain
@@ -16,7 +16,6 @@ class AppSwapchain : public AppResource<VkSwapchainKHR> {
      * @return A vector containing all images in the swapchain
      */
     std::vector<VkImage> getSwapchainImages();
-
     
-    
+    void destroy();
 };

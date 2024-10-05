@@ -7,4 +7,5 @@ class InstanceList : public ResourceList<VkInstance> {
         vkDestroyInstance(*it, nullptr);
         ResourceList::destroy(it);
     }
+    void destroyAll() {for (auto it = resourceList.begin(); it != resourceList.end(); it++) destroy(it);}
 };

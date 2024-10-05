@@ -1,16 +1,5 @@
+#include "vulkan-app.h"
 #include "sampler-resource.h"
-
-void AppSampler::init(VulkanApp *app, AppSamplerTemplate samplerTemplate)
-{
-    this->samplerTemplate = samplerTemplate;
-
-    VkSamplerCreateInfo createInfo{getSamplerCreateInfoFromTemplate(samplerTemplate)};
-
-    VkSampler sampler;
-    THROW(vkCreateSampler(app->logicalDevice.get(), &createInfo, nullptr, &sampler), "Failed to create sampler");
-
-    AppResource::init(app, app->resources.samplers.create(sampler));
-}
 
 static VkSamplerCreateInfo getSamplerCreateInfoFromTemplate(AppSamplerTemplate t) {
     switch (t) {
@@ -40,3 +29,20 @@ static VkSamplerCreateInfo getSamplerCreateInfoFromTemplate(AppSamplerTemplate t
             return {};
     }
 };
+
+void AppSampler::init(VulkanApp *app, AppSamplerTemplate samplerTemplate)
+{
+    this->samplerTemplate = samplerTemplate;
+
+    VkSamplerCreateInfo createInfo{getSamplerCreateInfoFromTemplate(samplerTemplate)};
+
+    VkSampler sampler;
+    THROW(vkCreateSampler(app->logicalDevice.get(), &createInfo, nullptr, &sampler), "Failed to create sampler");
+
+    AppResource::init(app, app->resources.samplers.create(sampler));
+}
+
+void AppSampler::destroy()
+{
+    getApp()->resources.samplers.destroy(getIterator(), getApp()->logicalDevice.get());
+}

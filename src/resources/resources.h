@@ -40,4 +40,11 @@ class Resources {
     SwapchainList swapchains;
     PipelineList pipelines;
     FramebufferList framebuffers;
+
+    void destroyAll(VkDevice device) {
+        imageViews.destroyAll(device);
+        images.destroyAll(device);
+        
+
+    }
 };

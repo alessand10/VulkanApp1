@@ -1,3 +1,4 @@
+#include "vulkan-app.h"
 #include "swapchain-resource.h"
 
 void AppSwapchain::init(VulkanApp *app, AppSurface appSurface, uint32_t width, uint32_t height)
@@ -50,4 +51,9 @@ std::vector<VkImage> AppSwapchain::getSwapchainImages()
     THROW(vkGetSwapchainImagesKHR(this->getApp()->logicalDevice.get(), this->get(), &swapchainImageCount, swapchainImages.data()), "Failed to retrieve swapchain images");
 
     return swapchainImages;
+}
+
+void AppSwapchain::destroy()
+{
+    getApp()->resources.swapchains.destroy(getIterator(), getApp()->logicalDevice.get());
 }

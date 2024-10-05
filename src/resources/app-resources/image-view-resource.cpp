@@ -1,17 +1,5 @@
+#include "vulkan-app.h"
 #include "image-view-resource.h"
-
-void AppImageView::init(VulkanApp *app, AppImage &image, uint32_t layerCount, uint32_t baseLayer)
-{
-    VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(image.getTemplate(), image.get(), layerCount, baseLayer) };
-    createInfo.image = image.get();
-    createInfo.subresourceRange.layerCount = layerCount;
-    createInfo.subresourceRange.baseArrayLayer = baseLayer;
-
-    VkImageView imageView;
-    THROW(vkCreateImageView(app->logicalDevice.get(), &createInfo, nullptr, &imageView), "Failed to create image view");
-    
-    AppResource::init(app, app->resources.imageViews.create(imageView));
-}
 
 static VkImageViewCreateInfo getImageViewCreateInfoFromTemplate(AppImageTemplate t, VkImage image, uint32_t layerCount, uint32_t baseLayer) {
     switch(t) {
@@ -90,3 +78,28 @@ static VkImageViewCreateInfo getImageViewCreateInfoFromTemplate(AppImageTemplate
             return {};
     };
 };
+
+void AppImageView::init(VulkanApp *app, AppImage &image, uint32_t layerCount, uint32_t baseLayer)
+{
+    VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(image.getTemplate(), image.get(), layerCount, baseLayer) };
+
+    VkImageView imageView;
+    THROW(vkCreateImageView(app->logicalDevice.get(), &createInfo, nullptr, &imageView), "Failed to create image view");
+    
+    AppResource::init(app, app->resources.imageViews.create(imageView));
+}
+
+void AppImageView::init(VulkanApp *app, VkImage image, AppImageTemplate imageCreationTemplate, uint32_t layerCount, uint32_t baseLayer)
+{
+    VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(imageCreationTemplate, image, layerCount, baseLayer) };
+
+    VkImageView imageView;
+    THROW(vkCreateImageView(app->logicalDevice.get(), &createInfo, nullptr, &imageView), "Failed to create image view");
+    
+    AppResource::init(app, app->resources.imageViews.create(imageView));
+}
+
+void AppImageView::destroy()
+{
+    getApp()->resources.imageViews.destroy(getIterator(), getApp()->logicalDevice.get());
+}

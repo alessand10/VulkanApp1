@@ -3,6 +3,6 @@
 
 class AppSurface : public AppResource<VkSurfaceKHR> {
     public:
-    void init(VulkanApp* app, struct GLFWwindow* window);
-    void destroy() { getApp()->resources.surfaces.destroy(getIterator(), getApp()->logicalDevice.get()); }
+    void init(class VulkanApp* app, struct GLFWwindow* window);
+    void destroy();
 };

@@ -1,13 +1,14 @@
+#include "vulkan-app.h"
 #include "descriptor-pool-resource.h"
 
-void AppDescriptorPool::init(VulkanApp *app, uint32_t maxSetsCount, std::map<AppDescriptorItemTemplate, uint32_t> descriptorTypeCounts)
+void AppDescriptorPool::init(VulkanApp *app, uint32_t maxSetsCount, std::map<VkDescriptorType, uint32_t> descriptorTypeCounts)
 {
     this->maxSetsCount = maxSetsCount;
     this->descriptorTypeCounts = descriptorTypeCounts;
 
     std::vector<VkDescriptorPoolSize> poolSizes = {};
     for (auto descriptorTypeCount = descriptorTypeCounts.begin() ; descriptorTypeCount != descriptorTypeCounts.end() ; descriptorTypeCount++) {
-        VkDescriptorType type = getDescriptorTypeFromTemplate(descriptorTypeCount->first);
+        VkDescriptorType type = descriptorTypeCount->first;
         uint32_t count = descriptorTypeCount->second;
         poolSizes.push_back(VkDescriptorPoolSize{type, count});
     }
@@ -38,4 +39,9 @@ VkDescriptorSet AppDescriptorPool::allocateDescriptorSet(VkDescriptorSetLayout d
     THROW(vkAllocateDescriptorSets(app->logicalDevice.get(), &allocInfo, &descriptorSet), "Failed to allocate descriptor set");
     
     return descriptorSet;
+}
+
+void AppDescriptorPool::destroy()
+{
+    getApp()->resources.descriptorPools.destroy(getIterator(), getApp()->logicalDevice.get());
 }
