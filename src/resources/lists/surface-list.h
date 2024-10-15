@@ -7,5 +7,5 @@ class SurfaceList : public ResourceList<VkSurfaceKHR> {
         vkDestroySurfaceKHR(instance, *it, nullptr);
         ResourceList::destroy(it);
     }
-    void destroyAll(VkInstance instance) {for (auto it = resourceList.begin(); it != resourceList.end(); it++) destroy(it, instance);}
+    void destroyAll(VkInstance instance) { while (!resourceList.empty()) destroy(resourceList.begin(), instance);}
 };

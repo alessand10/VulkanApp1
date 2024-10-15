@@ -7,7 +7,7 @@
 class AppSwapchain : public AppResource<VkSwapchainKHR> {
     uint32_t imageCount;
     public:
-    void init(class VulkanApp *app, AppSurface appSurface, uint32_t width, uint32_t height);
+    void init(class AppBase* appBase, AppSurface appSurface, uint32_t width, uint32_t height);
     
     /**
      * @brief Retrieves all images in the swapchain
@@ -16,7 +16,7 @@ class AppSwapchain : public AppResource<VkSwapchainKHR> {
      * 
      * @return A vector containing all images in the swapchain
      */
-    std::vector<VkImage> getSwapchainImages();
+    std::vector<VkImage> getImages();
     uint32_t getImageCount();
     
     void destroy();

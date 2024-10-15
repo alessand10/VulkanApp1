@@ -19,10 +19,11 @@ add_library(resources   app-resources/buffer-resource.cpp
                         app-resources/swapchain-resource.cpp
                         resource-utilities.cpp
                     )
-
+find_package(tinyobjloader REQUIRED)
 find_package(VulkanHeaders REQUIRED)
 find_package(VulkanLoader REQUIRED)
-target_link_libraries(resources PUBLIC general-utils
+target_link_libraries(resources PUBLIC tinyobjloader::tinyobjloader
+                                PUBLIC general-utils
                                 PUBLIC application
                                 PUBLIC rendering
                                 PUBLIC geometry)

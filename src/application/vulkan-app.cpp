@@ -34,14 +34,12 @@ void VulkanApp::internalInit()
 
     createWindow();
 
-
     setupDebugMessenger();
 
     logicalDevice.init(this, physicalDevice, {}, {"VK_KHR_swapchain"});
     getQueues();
 
     surface.init(this, window);
-
 
     lastRenderTime = highResClock.now();
 
@@ -407,8 +405,8 @@ void VulkanApp::createWindow()
 void VulkanApp::cleanup()
 {
     DestroyDebugUtilsMessengerEXT(instance.get(), debugMessenger, nullptr);
-    glfwDestroyWindow(window);
     resources.destroyAll(logicalDevice.get(), instance.get());
+    glfwDestroyWindow(window);
     glfwTerminate();
 }
 
@@ -418,4 +416,5 @@ int main() {
     app.internalInit();
     app.userInit();
     app.internalLoop();
+    app.cleanup();
 }

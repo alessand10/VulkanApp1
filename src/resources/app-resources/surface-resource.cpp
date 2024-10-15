@@ -1,16 +1,16 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "surface-resource.h"
 #include "GLFW/glfw3.h"
 
-void AppSurface::init(VulkanApp *app, GLFWwindow *window)
+void AppSurface::init(AppBase* appBase, GLFWwindow *window)
 {
     VkSurfaceKHR surface;
-    THROW(glfwCreateWindowSurface(app->instance.get(), window, nullptr, &surface), "Failed to create window surface");
+    THROW(glfwCreateWindowSurface(appBase->getInstance(), window, nullptr, &surface), "Failed to create window surface");
     
-    AppResource::init(app, app->resources.surfaces.create(surface));
+    AppResource::init(appBase, appBase->resources.surfaces.create(surface));
 }
 
 void AppSurface::destroy()
 {
-    getApp()->resources.surfaces.destroy(getIterator(), getApp()->instance.get());
+    appBase->resources.surfaces.destroy(getIterator(), appBase->getInstance());
 }

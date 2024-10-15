@@ -1,5 +1,6 @@
 #pragma once
 #include "resource-list.h"
+#include <stdint.h>
 
 /**
  * @class AppResource
@@ -12,13 +13,13 @@ template <typename T>
 class AppResource {
     protected:
     typename std::list<T>::iterator resource;
-    class VulkanApp* app;
+    class AppBase* appBase;
     bool isInitialized = false;
 
     public:
-    void init(class VulkanApp* app, typename std::list<T>::iterator resourceIt)
+    void init(class AppBase* appBase, typename std::list<T>::iterator resourceIt)
     {
-        this->app = app;
+        this->appBase = appBase;
         resource = resourceIt;
         isInitialized = true;
     }
@@ -43,8 +44,10 @@ class AppResource {
         resource = it; 
     }
 
-    VulkanApp* getApp()
+    class AppBase* getAppBase()
     {
-        return app;
+        return appBase;
     }
+    
 };
+

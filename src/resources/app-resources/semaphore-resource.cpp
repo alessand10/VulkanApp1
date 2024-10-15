@@ -1,17 +1,17 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "semaphore-resource.h"
 
-void AppSemaphore::init(VulkanApp *app)
+void AppSemaphore::init(AppBase* appBase)
 {
     VkSemaphoreCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
     VkSemaphore semaphore = VK_NULL_HANDLE;
-    THROW(vkCreateSemaphore(app->logicalDevice.get(), &createInfo, nullptr, &semaphore), "Failed to create semaphore");
-    AppResource::init(app, app->resources.semaphores.create(semaphore));
+    THROW(vkCreateSemaphore(appBase->getDevice(), &createInfo, nullptr, &semaphore), "Failed to create semaphore");
+    AppResource::init(appBase, appBase->resources.semaphores.create(semaphore));
 }
 
 void AppSemaphore::destroy()
 {
-    getApp()->resources.semaphores.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.semaphores.destroy(getIterator(), appBase->getDevice());
 }

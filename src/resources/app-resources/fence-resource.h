@@ -1,9 +1,9 @@
 #pragma once
 #include "app-resource.h"
 
-class AppFence : AppResource<VkFence> {
+class AppFence : public AppResource<VkFence> {
     public:
-    void init(class VulkanApp* app, VkFenceCreateFlags flags = 0U);
+    void init(class AppBase* appBase, VkFenceCreateFlags flags = 0U);
 
     void destroy();
 };

@@ -1,0 +1,1 @@
+cmake -S . -B ./build -DCMAKE_TOOLCHAIN_FILE=./build/build/Debug/generators/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Debug

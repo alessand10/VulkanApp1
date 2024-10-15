@@ -1,7 +1,7 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "device-resource.h"
 
-void AppDevice::init(VulkanApp *app, VkPhysicalDevice physicalDevice, std::vector<const char*> layers, std::vector<const char*> extensions)
+void AppDevice::init(AppBase* appBase, VkPhysicalDevice physicalDevice, std::vector<const char*> layers, std::vector<const char*> extensions)
 {
     VkDevice device = VK_NULL_HANDLE;
 
@@ -14,9 +14,9 @@ void AppDevice::init(VulkanApp *app, VkPhysicalDevice physicalDevice, std::vecto
     std::vector<uint32_t> uniqueQueueFamilies = {};
 
     const std::vector<uint32_t> queueFamilyIndices = {
-        app->queueFamilyIndices.graphics,
-        app->queueFamilyIndices.compute,
-        app->queueFamilyIndices.transfer
+        appBase->queueFamilyIndices.graphics,
+        appBase->queueFamilyIndices.compute,
+        appBase->queueFamilyIndices.transfer
     };
 
     // The queue create info structures, we create one per unique queue family index
@@ -49,10 +49,10 @@ void AppDevice::init(VulkanApp *app, VkPhysicalDevice physicalDevice, std::vecto
     VkDevice logicalDevice;
     THROW(vkCreateDevice(physicalDevice, &createInfo, nullptr, &logicalDevice), "Failed to create logical device");
 
-    AppResource::init(app, app->resources.devices.create(logicalDevice));
+    AppResource::init(appBase, appBase->resources.devices.create(logicalDevice));
 }
 
 void AppDevice::destroy()
 {
-    getApp()->resources.devices.destroy(getIterator());
+    appBase->resources.devices.destroy(getIterator());
 }

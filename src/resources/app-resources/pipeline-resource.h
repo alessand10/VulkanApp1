@@ -6,6 +6,6 @@
 
 class AppPipeline : public AppResource<VkPipeline> {
     public:
-    void init(class VulkanApp* app, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass);
+    void init(class AppBase* appBase, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass);
     void destroy();
 };

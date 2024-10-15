@@ -23,6 +23,6 @@ struct AppSubpass {
 
 class AppRenderPass : public AppResource<VkRenderPass> {
     public:
-    void init(class VulkanApp* app, std::vector<AttachmentTemplate> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies);
+    void init(class AppBase* appBase, std::vector<AttachmentTemplate> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies);
     void destroy();
 };

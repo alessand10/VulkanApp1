@@ -3,7 +3,7 @@
 
 class AppFramebuffer : public AppResource<VkFramebuffer> {
     public:
-    void init(class VulkanApp* app, VkRenderPass renderPass, std::vector<VkImageView> attachmentViews);
+    void init(class AppBase* appBase, class AppRenderPass* renderPass, std::vector<class AppImageView*> attachmentViews);
     
     void destroy();
 };

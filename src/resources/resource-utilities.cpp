@@ -1,19 +1,20 @@
 #include "resource-utilities.h"
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "turbojpeg.h"
 #include "GLFW/glfw3.h"
 #include "file-utilities.h"
+#include "device-memory-resource.h"
 
 
-void copyDataToStagingMemory(AppDeviceMemory &stagingMemory, void *data, size_t size)
+void copyDataToStagingMemory(AppDeviceMemory stagingMemory, void *data, size_t size)
 {
     void* mappedMemory = nullptr;
-    vkMapMemory(stagingMemory.getApp()->logicalDevice.get(), stagingMemory.get(), 0U, size, 0U, &mappedMemory);
+    vkMapMemory(stagingMemory.getAppBase()->getDevice(), stagingMemory.get(), 0U, size, 0U, &mappedMemory);
     memcpy(mappedMemory, data, size);
-    vkUnmapMemory(stagingMemory.getApp()->logicalDevice.get(), stagingMemory.get());
+    vkUnmapMemory(stagingMemory.getAppBase()->getDevice(), stagingMemory.get());
 }
 
-void loadJPEGImage(VulkanApp *app, const char *path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer)
+void loadJPEGImage(AppBase *app, const char *path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer)
 {
     VkDevice device = app->logicalDevice.get();
     
@@ -68,7 +69,7 @@ void renderCubeMap(AppImage imageArray)
     // 
 }
 
-AppImageBundle createImageAll(VulkanApp* app, uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount)
+AppImageBundle createImageAll(AppBase* app, uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount)
 {
     AppImageBundle bundle {};
     bundle.image.init(app, appImageTemplate, width, height, layerCount);
@@ -78,7 +79,7 @@ AppImageBundle createImageAll(VulkanApp* app, uint32_t width, uint32_t height, A
     return bundle;
 }
 
-AppBufferBundle createBufferAll(VulkanApp* app, AppBufferTemplate bufferTemplate, size_t size)
+AppBufferBundle createBufferAll(AppBase* app, AppBufferTemplate bufferTemplate, size_t size)
 {
     AppBufferBundle bufferBundle {};
     bufferBundle.buffer.init(app, size, bufferTemplate);
@@ -86,6 +87,8 @@ AppBufferBundle createBufferAll(VulkanApp* app, AppBufferTemplate bufferTemplate
     bufferBundle.buffer.bindToMemory(&bufferBundle.deviceMemory);
     return bufferBundle;
 }
+
+
 
 void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer, VkCommandBuffer commandBuffer)
 {
@@ -127,7 +130,7 @@ void updateDescriptor(AppImageView imageView, VkDescriptorSet set, uint32_t bind
     descriptorWriteImg.pImageInfo = &imageInfo;
     descriptorWriteImg.pTexelBufferView = nullptr;
 
-    vkUpdateDescriptorSets(imageView.getApp()->logicalDevice.get(), 1U, &descriptorWriteImg, 0U, nullptr);
+    vkUpdateDescriptorSets(imageView.getAppBase()->getDevice(), 1U, &descriptorWriteImg, 0U, nullptr);
 }
 
 void updateDescriptor(AppBuffer buffer, VkDescriptorSet set, uint32_t size, uint32_t binding, VkDescriptorType descriptorType)
@@ -149,26 +152,5 @@ void updateDescriptor(AppBuffer buffer, VkDescriptorSet set, uint32_t size, uint
     descriptorWriteBuffer.pImageInfo = nullptr;
     descriptorWriteBuffer.pTexelBufferView = nullptr;
 
-    vkUpdateDescriptorSets(buffer.getApp()->logicalDevice.get(), 1U, &descriptorWriteBuffer, 0U, nullptr);
+    vkUpdateDescriptorSets(buffer.getAppBase()->getDevice(), 1U, &descriptorWriteBuffer, 0U, nullptr);
 }
-
-
-// void destroySwapchain(AppSwapchain swapchain)
-// {
-//     // Destroy the created image views, and delete the images (which will themselves be destroyed when destroying the swapchain)
-//     for (uint32_t index = 0 ; index < swapchain.swapchainImages.size() ; index++){
-//         vkDestroyImageView(app->logicalDevice.get(), swapchain.swapchainImageViews[index].get(), nullptr);
-//         imageViews.erase(swapchain.swapchainImageViews[index].getRef());
-//         images.erase(swapchain.swapchainImages[index].getRef());
-
-//         vkDestroyFramebuffer(app->logicalDevice.get(), swapchain.framebuffers[index].get(), nullptr);
-//         frameBuffers.erase(swapchain.framebuffers[index].getRef());
-
-//     }
-
-//     // Destroy the swapchain Vulkan resource
-//     vkDestroySwapchainKHR(app->logicalDevice.get(), swapchain.get(), nullptr);
-
-//     // Remove this swapchain from the list
-//     swapchains.erase(swapchain.getRef());
-// }

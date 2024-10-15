@@ -4,8 +4,13 @@ set(CXX_STANDARD C++17)
 cmake_minimum_required(VERSION 3.30)
 project(VulkanApp)
 
-add_executable(VulkanApp src/main.cpp src/vulkan-app.cpp src/camera.cpp src/mesh.cpp src/mesh-manager.cpp src/vertex.cpp 
-    src/resource-manager.cpp src/attach.cpp src/raytracing.cpp src/utilities.cpp)
+add_subdirectory(src/resources)
+add_subdirectory(src/geometry)
+add_subdirectory(src/general-utils)
+add_subdirectory(src/application)
+add_subdirectory(src/rendering)
+
+add_executable(VulkanApp src/app-config.cpp)
 
 if (CMAKE_HOST_UNIX)
     if (CMAKE_HOST_APPLE)
@@ -26,6 +31,11 @@ if (CMAKE_HOST_UNIX)
                                 PUBLIC vulkan-headers::vulkan-headers
                                 PUBLIC Vulkan::Loader
                                 PUBLIC glm::glm
+                                PUBLIC geometry
+                                PUBLIC resources
+                                PUBLIC application
+                                PUBLIC rendering
+                                PUBLIC general-utils
                             )
     endif()
 elseif (CMAKE_HOST_WIN32)

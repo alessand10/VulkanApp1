@@ -9,8 +9,17 @@
 #include "instance-resource.h"
 #include "device-resource.h"
 #include "shader-module-resource.h"
+#include "descriptor-pool-resource.h"
+#include "descriptor-set-layout-resource.h"
+#include "render-pass-resource.h"
+#include "framebuffer-resource.h"
+#include "pipeline-layout-resource.h"
+#include "pipeline-resource.h"
+#include "semaphore-resource.h"
+#include "fence-resource.h"
+#include "device-memory-resource.h"
 
-void loadJPEGImage(class VulkanApp* app, const char* path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer);
+void loadJPEGImage(AppBase* appBase, const char* path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer);
 
 /**
  * @brief Renders a cube map to image array with 6 layers
@@ -48,8 +57,8 @@ struct AppBufferBundle {
  * 
  * @return The created image bundle (containing an image, view and memory)
  */
-AppImageBundle createImageAll(VulkanApp* app, uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount = 1U);
-AppBufferBundle createBufferAll(VulkanApp* app, AppBufferTemplate bufferTemplate, size_t size);
+AppImageBundle createImageAll(class AppBase* app, uint32_t width, uint32_t height, AppImageTemplate appImageTemplate, uint32_t layerCount = 1U);
+AppBufferBundle createBufferAll(class AppBase* app, AppBufferTemplate bufferTemplate, size_t size);
 
 /**
  * @brief Updates an image descriptor for a particular descriptor set

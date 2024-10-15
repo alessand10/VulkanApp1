@@ -32,7 +32,7 @@ class AppImage : public AppResource<VkImage> {
      * 
      * @return The created image object
      */
-    void init(class VulkanApp* app, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount = 1U, VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED);
+    void init(class AppBase* appBase, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount = 1U, VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED);
 
     /**
      * @brief Initializes an app-managed image using an existing Vulkan image
@@ -48,7 +48,7 @@ class AppImage : public AppResource<VkImage> {
      * 
      * @return The created image object
      */
-    void init(class VulkanApp* app, VkImage image, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout);
+    void init(class AppBase* appBase, VkImage image, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout);
 
     /**
      * @brief Transitions an image from its current layout to a new layout

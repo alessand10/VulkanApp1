@@ -1,5 +1,11 @@
-add_library(geometry "geometry-utilities.cpp" "geometry-manager.cpp" "mesh.cpp")
+add_library(geometry "geometry-utilities.cpp" "mesh.cpp" "geometry-manager.cpp")
 
-target_link_libraries(geometry PUBLIC general-utils)
+find_package(tinyobjloader REQUIRED)
 
-target_include_directories(geometry PUBLIC ${CMAKE_SOURCE_DIR}/src/geometry)
+target_link_libraries(geometry PUBLIC   general-utils
+                                        resources
+                                        tinyobjloader::tinyobjloader)
+
+target_include_directories(geometry PUBLIC ${CMAKE_SOURCE_DIR}/src/geometry
+                                    PUBLIC ${CMAKE_SOURCE_DIR}/src/memory
+                                    PUBLIC ${CMAKE_SOURCE_DIR}/src)

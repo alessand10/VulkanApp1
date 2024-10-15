@@ -3,8 +3,8 @@
 #include <vector>
 #include <stdint.h>
 #include "vulkan/vulkan.hpp"
-#include <vertex.h>
 #include "mesh.h"
+#include "memory-list-tree.h"
 
 /**
  * @class MeshManager
@@ -15,34 +15,30 @@
  */
 class GeometryManager {
     public:
-    struct MeshInsertion {
-        uint32_t vertexOffset;
-        uint32_t indexOffset;
-        uint32_t vertexCount;
-        uint32_t indexCount;
-    };
 
     private:
     class VulkanApp* app;
 
+    MemoryListTree vertexBufferMlt;
+    MemoryListTree indexBufferMlt;
+
     std::vector<Mesh> meshes;
-    std::map<uint32_t, MeshInsertion> insertedMeshData = {};
-    std::vector<Vertex> vertexData;
-    std::vector<uint32_t> indexData;
 
     bool buffersInitialized = false;
     
     void insertMesh(Mesh* mesh, VkCommandBuffer commandBuffer);
 
     public:
-    GeometryManager();
-    void init(class VulkanApp* app) {this->app = app;};
-    void importMeshFromOBJ(const char* path, VkCommandBuffer commandBuffer);
-    Vertex* getVertexData() {return vertexData.data();}
-    uint32_t getVertexDataSize() {return sizeof(Vertex) * vertexData.size();};
-    uint32_t* getIndexData() {return indexData.data();}
-    uint32_t getIndexDataSize() {return sizeof(uint32_t) * indexData.size();};
+    void init(class VulkanApp* app, uint32_t vertexCount, uint32_t indexCount) {
+        this->app = app;
+        vertexBufferMlt.init(vertexCount);
+        indexBufferMlt.init(indexCount);
+    };
 
-    uint32_t getMeshCount();
-    MeshInsertion getMeshInsertionAtIndex(uint32_t index);
+    Mesh* getMesh(uint32_t index) {
+        return &meshes[index];
+    }
+
+    int importOBJ(const char* path, VkCommandBuffer commandBuffer);
+
 };

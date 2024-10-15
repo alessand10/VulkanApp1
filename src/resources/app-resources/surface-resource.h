@@ -3,6 +3,6 @@
 
 class AppSurface : public AppResource<VkSurfaceKHR> {
     public:
-    void init(class VulkanApp* app, struct GLFWwindow* window);
+    void init(class AppBase* appBase, struct GLFWwindow* window);
     void destroy();
 };

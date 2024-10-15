@@ -1,8 +1,8 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "instance-resource.h"
 #include "GLFW/glfw3.h"
 
-void AppInstance::init(VulkanApp *app, const char* appName, bool enableValidationLayers)
+void AppInstance::init(AppBase* appBase, const char* appName, bool enableValidationLayers)
 {
 
     const std::vector<const char*> validationLayers = {
@@ -48,10 +48,10 @@ void AppInstance::init(VulkanApp *app, const char* appName, bool enableValidatio
     VkInstance instance = VK_NULL_HANDLE;
     THROW(vkCreateInstance(&instanceCreateInfo, nullptr, &instance), "Failed to create Vulkan instance");
 
-    AppResource::init(app, app->resources.instances.create(instance));
+    AppResource::init(appBase, appBase->resources.instances.create(instance));
 }
 
 void AppInstance::destroy()
 {
-    getApp()->resources.instances.destroy(getIterator());
+    appBase->resources.instances.destroy(getIterator());
 }

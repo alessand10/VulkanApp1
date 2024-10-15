@@ -13,9 +13,10 @@ enum class AppBufferTemplate {
 class AppBuffer : public AppResource<VkBuffer> {
     protected:
     AppBufferTemplate appBufferTemplate = AppBufferTemplate::UNIFORM_BUFFER;
+    class AppDeviceMemory* bufferMemory;
     size_t size;
     public:
-    void init(class VulkanApp* app, size_t size, AppBufferTemplate appBufferTemplate);
+    void init(class AppBase* appBase, size_t size, AppBufferTemplate appBufferTemplate);
     AppBufferTemplate getTemplate() { return appBufferTemplate; }
 
     void bindToMemory(class AppDeviceMemory *bufferMemory);

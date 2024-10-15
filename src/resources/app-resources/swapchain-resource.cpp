@@ -1,12 +1,12 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "swapchain-resource.h"
 
-void AppSwapchain::init(VulkanApp *app, AppSurface appSurface, uint32_t width, uint32_t height)
+void AppSwapchain::init(AppBase* appBase, AppSurface appSurface, uint32_t width, uint32_t height)
 {
     AppSwapchain appSwapchain{};
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities{};
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(app->physicalDevice, app->surface.get(), &surfaceCapabilities);
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(appBase->physicalDevice, appBase->surface.get(), &surfaceCapabilities);
 
     VkSwapchainCreateInfoKHR swapchainCreateInfo{};
     swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -28,27 +28,27 @@ void AppSwapchain::init(VulkanApp *app, AppSurface appSurface, uint32_t width, u
 
 
     VkSwapchainKHR swapchain;
-    THROW(vkCreateSwapchainKHR(app->logicalDevice.get(), &swapchainCreateInfo, NULL, &swapchain), "Failed to create swapchain");
-    AppResource::init(app, app->resources.swapchains.create(swapchain));
+    THROW(vkCreateSwapchainKHR(appBase->getDevice(), &swapchainCreateInfo, NULL, &swapchain), "Failed to create swapchain");
+    AppResource::init(appBase, appBase->resources.swapchains.create(swapchain));
     
     uint32_t swapchainImageCount = 0;
 
     // Retrieve the image count
-    THROW(vkGetSwapchainImagesKHR(app->logicalDevice.get(), get(), &swapchainImageCount, NULL), "Failed to retrieve swapchain images");
+    THROW(vkGetSwapchainImagesKHR(appBase->getDevice(), get(), &swapchainImageCount, NULL), "Failed to retrieve swapchain images");
 
     imageCount = swapchainImageCount;
 }
 
-std::vector<VkImage> AppSwapchain::getSwapchainImages()
+std::vector<VkImage> AppSwapchain::getImages()
 {
     uint32_t swapchainImageCount = 0;
 
     // Get the count initially
-    THROW(vkGetSwapchainImagesKHR(this->getApp()->logicalDevice.get(), this->get(), &swapchainImageCount, NULL), "Failed to retrieve swapchain images");
+    THROW(vkGetSwapchainImagesKHR(appBase->getDevice(), get(), &swapchainImageCount, NULL), "Failed to retrieve swapchain images");
     std::vector<VkImage> swapchainImages(swapchainImageCount);
 
     // Now populate the sized vector
-    THROW(vkGetSwapchainImagesKHR(this->getApp()->logicalDevice.get(), this->get(), &swapchainImageCount, swapchainImages.data()), "Failed to retrieve swapchain images");
+    THROW(vkGetSwapchainImagesKHR(appBase->getDevice(), get(), &swapchainImageCount, swapchainImages.data()), "Failed to retrieve swapchain images");
 
     return swapchainImages;
 }
@@ -60,5 +60,5 @@ uint32_t AppSwapchain::getImageCount()
 
 void AppSwapchain::destroy()
 {
-    getApp()->resources.swapchains.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.swapchains.destroy(getIterator(), appBase->getDevice());
 }

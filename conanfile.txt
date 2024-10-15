@@ -1,6 +1,7 @@
 [requires]
 libjpeg-turbo/3.0.3
 glfw/3.4
+tinyobjloader/2.0.0-rc10
 vulkan-headers/1.3.290.0
 vulkan-loader/1.3.290.0
 pkgconf/2.2.0

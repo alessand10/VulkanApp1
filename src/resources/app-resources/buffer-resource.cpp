@@ -1,6 +1,7 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "buffer-resource.h"
 #include "device-resource.h"
+#include "device-memory-resource.h"
 
 static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, uint32_t size) { 
     switch(t) {
@@ -8,8 +9,8 @@ static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, u
         return {
            VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
            nullptr,
-           size,
            0U,
+           size,
            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
            VK_SHARING_MODE_EXCLUSIVE,
            0U,
@@ -19,8 +20,8 @@ static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, u
         return {
            VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
            nullptr,
-           size,
            0U,
+           size,
            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
            VK_SHARING_MODE_EXCLUSIVE,
            0U,
@@ -30,8 +31,8 @@ static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, u
         return {
            VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
            nullptr,
-           size,
            0U,
+           size,
            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
            VK_SHARING_MODE_EXCLUSIVE,
            0U,
@@ -41,8 +42,8 @@ static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, u
         return {
            VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
            nullptr,
-           size,
            0U,
+           size,
            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
            VK_SHARING_MODE_EXCLUSIVE,
            0U,
@@ -52,8 +53,8 @@ static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, u
         return {
            VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
            nullptr,
-           size,
            0U,
+           size,
            VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
            VK_SHARING_MODE_EXCLUSIVE,
            0U,
@@ -64,7 +65,7 @@ static VkBufferCreateInfo getBufferCreateInfoFromTemplate(AppBufferTemplate t, u
     }
 };
 
-void AppBuffer::init(VulkanApp *app, size_t size, AppBufferTemplate appBufferTemplate)
+void AppBuffer::init(AppBase* appBase, size_t size, AppBufferTemplate appBufferTemplate)
 {
    this->appBufferTemplate = appBufferTemplate;
    this->size = size;
@@ -74,24 +75,24 @@ void AppBuffer::init(VulkanApp *app, size_t size, AppBufferTemplate appBufferTem
 
    // Attempt to create the buffer
    VkBuffer buffer = VK_NULL_HANDLE;
-   THROW(vkCreateBuffer(app->logicalDevice.get(), &createInfo, nullptr, &buffer), "Failed to create buffer"); 
+   THROW(vkCreateBuffer(appBase->getDevice(), &createInfo, nullptr, &buffer), "Failed to create buffer"); 
 
    // Add the buffer to the list of managed buffer, returning an iterator
-   AppResource::init(app, app->resources.buffers.create(buffer));
+   AppResource::init(appBase, appBase->resources.buffers.create(buffer));
 }
 
 void AppBuffer::bindToMemory(AppDeviceMemory *bufferMemory)
 {
-   VkDevice device = this->getApp()->logicalDevice.get();
+   VkDevice device = appBase->getDevice();
    VkBuffer buffer = get();
    VkDeviceMemory memory = bufferMemory->get();
+   this->bufferMemory = bufferMemory;
 
    THROW(vkBindBufferMemory(device, buffer, memory, 0U), "Failed to bind image to memory");
 }
 
 void AppBuffer::copyBuffer(AppBuffer &src, AppBuffer &dst, VkCommandBuffer commandBuffer, VkDeviceSize size, VkDeviceSize srcOffset, VkDeviceSize dstOffset)
 {
-   VulkanApp* app = src.getApp();
    VkSubmitInfo submitInfo{};
    submitInfo.pCommandBuffers = &(commandBuffer);
    submitInfo.commandBufferCount = 1U;
@@ -123,19 +124,21 @@ void AppBuffer::copyBuffer(AppBuffer &src, AppBuffer &dst, VkCommandBuffer comma
    transferCompleteFenceInfo.pNext = nullptr;
    transferCompleteFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
+   AppBase* resources = src.appBase;
+
    VkFence transferCompleteFence;
-   vkCreateFence(app->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
+   vkCreateFence(resources->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
 
-   vkQueueSubmit(app->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
+   vkQueueSubmit(resources->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
 
-   vkWaitForFences(app->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
+   vkWaitForFences(resources->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
 
-   vkDeviceWaitIdle(app->logicalDevice.get());
+   vkDeviceWaitIdle(resources->logicalDevice.get());
    
-   vkDestroyFence(app->logicalDevice.get(), transferCompleteFence, nullptr);
+   vkDestroyFence(resources->logicalDevice.get(), transferCompleteFence, nullptr);
 }
 
 void AppBuffer::destroy()
 {
-   getApp()->resources.buffers.destroy(getIterator(), getApp()->logicalDevice.get());
+   appBase->resources.buffers.destroy(getIterator(), appBase->logicalDevice.get());
 }

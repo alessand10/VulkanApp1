@@ -3,6 +3,6 @@
 
 class AppSemaphore : public AppResource<VkSemaphore> {
     public:
-    void init(class VulkanApp* app);
+    void init(class AppBase* appBase);
     void destroy();
 };

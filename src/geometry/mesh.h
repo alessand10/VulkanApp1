@@ -1,24 +1,23 @@
 #pragma once
 #include <vector>
 #include <cstdint>
-#include "vertex.h"
+#include "app-config.h"
+#include "tiny_obj_loader.h"
+#include "memory-block-node.h"
+#include <list>
 
 /**
  * 
  */ 
 struct Mesh {
-
-    std::vector<glm::vec3> positions;
-    std::vector<glm::vec2> texCoords;
-    std::vector<glm::vec3> normals;
-    std::vector<glm::vec3> tangents;
-    std::vector<Face> faces;
+    std::list<MemoryBlockNode>::iterator vertexBufferBlock;
+    std::list<MemoryBlockNode>::iterator indexBufferBlock;
 
     public:
-    Mesh();
-    void importOBJ(const char* path);
-    uint32_t getIndexCount();
-    uint32_t getVertexCount();
+    tinyobj::attrib_t attrib;
+    tinyobj::shape_t shape;
 
+    Mesh();
     
+    std::pair<std::vector<Vertex>, std::vector<uint32_t>> getVertexAndIndexData();
 };

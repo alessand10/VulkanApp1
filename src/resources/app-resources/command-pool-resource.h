@@ -4,7 +4,7 @@
 class AppCommandPool : public AppResource<VkCommandPool>{
     uint32_t queueFamilyIndex;
     public:
-    void init(class VulkanApp* app, uint32_t queueFamilyIndex);
+    void init(class AppBase* baseResources, uint32_t queueFamilyIndex);
 
     VkCommandBuffer allocateCommandBuffer(VkCommandBufferLevel level);
 

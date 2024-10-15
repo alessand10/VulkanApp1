@@ -1,7 +1,7 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "pipeline-layout-resource.h"
 
-void AppPipelineLayout::init(VulkanApp *app, std::vector<VkDescriptorSetLayout> descriptorSetLayouts, std::vector<VkPushConstantRange> pushConstantRanges)
+void AppPipelineLayout::init(AppBase* appBase, std::vector<VkDescriptorSetLayout> descriptorSetLayouts, std::vector<VkPushConstantRange> pushConstantRanges)
 {
     // Create the pipeline layout
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
@@ -12,12 +12,12 @@ void AppPipelineLayout::init(VulkanApp *app, std::vector<VkDescriptorSetLayout> 
     pipelineLayoutInfo.pPushConstantRanges =  pushConstantRanges.size() == 0 ? nullptr : pushConstantRanges.data();
 
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    THROW(vkCreatePipelineLayout(app->logicalDevice.get(), &pipelineLayoutInfo, NULL, &pipelineLayout), "Failed to create pipeline layout")
+    THROW(vkCreatePipelineLayout(appBase->getDevice(), &pipelineLayoutInfo, NULL, &pipelineLayout), "Failed to create pipeline layout")
 
-    AppResource::init(app, app->resources.pipelineLayouts.create(pipelineLayout));
+    AppResource::init(appBase, appBase->resources.pipelineLayouts.create(pipelineLayout));
 }
 
 void AppPipelineLayout::destroy()
 {
-    getApp()->resources.pipelineLayouts.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.pipelineLayouts.destroy(getIterator(), appBase->getDevice());
 }

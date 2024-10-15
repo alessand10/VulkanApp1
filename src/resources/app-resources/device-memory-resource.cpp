@@ -1,12 +1,12 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "device-memory-resource.h"
 #include "buffer-resource.h"
 #include "image-resource.h"
 
-uint32_t getSuitableMemoryTypeIndex(VulkanApp* app, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags)
+uint32_t getSuitableMemoryTypeIndex(VkPhysicalDevice physicalDevice, VkMemoryRequirements memoryRequirements, VkMemoryPropertyFlags propertyFlags)
 {
     VkPhysicalDeviceMemoryProperties memoryProperties;
-    vkGetPhysicalDeviceMemoryProperties(app->physicalDevice, &memoryProperties);
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
     
     // A bitmask where (1 << i) is set iff memoryProperties.memoryType[i] is supported given the requirements
     for (uint32_t index = 0 ; index < memoryProperties.memoryTypeCount ; index++) {
@@ -19,8 +19,9 @@ uint32_t getSuitableMemoryTypeIndex(VulkanApp* app, VkMemoryRequirements memoryR
     throw std::runtime_error("Unable to find a suitable memory type");
 }
 
-void AppDeviceMemory::init(VulkanApp *app, AppBuffer buffer)
+void AppDeviceMemory::init(AppBase* appBase, AppBuffer buffer)
 {
+   
     AppDeviceMemory returnDeviceMemory{};
     
     VkMemoryPropertyFlags memoryPropertyFlags = 0U;
@@ -38,22 +39,23 @@ void AppDeviceMemory::init(VulkanApp *app, AppBuffer buffer)
     };
 
     VkMemoryRequirements bufferMemoryRequirements;
-    vkGetBufferMemoryRequirements(app->logicalDevice.get(), buffer.get(), &bufferMemoryRequirements);
-    uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(app, bufferMemoryRequirements, memoryPropertyFlags);
+    vkGetBufferMemoryRequirements(appBase->getDevice(), buffer.get(), &bufferMemoryRequirements);
+    uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(appBase->physicalDevice, bufferMemoryRequirements, memoryPropertyFlags);
 
     VkMemoryAllocateInfo memoryAllocateInfo {};
     memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memoryAllocateInfo.pNext = nullptr;
     memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
     memoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
+    this->size = bufferMemoryRequirements.size;
 
     VkDeviceMemory deviceMemory;
-    THROW(vkAllocateMemory(app->logicalDevice.get(), &memoryAllocateInfo, nullptr, &deviceMemory), "Failed to allocate buffer memory");
+    THROW(vkAllocateMemory(appBase->getDevice(), &memoryAllocateInfo, nullptr, &deviceMemory), "Failed to allocate buffer memory");
     
-    AppResource::init(app, app->resources.deviceMemorySet.create(deviceMemory));
+    AppResource::init(appBase, appBase->resources.deviceMemorySet.create(deviceMemory));
 }
 
-void AppDeviceMemory::init(VulkanApp *app, AppImage image)
+void AppDeviceMemory::init(AppBase* appBase, AppImage image)
 {
     VkMemoryPropertyFlags memoryPropertyFlags = 0U;
 
@@ -70,22 +72,23 @@ void AppDeviceMemory::init(VulkanApp *app, AppImage image)
     }
 
     VkMemoryRequirements imageMemoryRequirements;
-    vkGetImageMemoryRequirements(app->logicalDevice.get(), image.get(), &imageMemoryRequirements);
-    uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(app, imageMemoryRequirements, memoryPropertyFlags);
+    vkGetImageMemoryRequirements(appBase->getDevice(), image.get(), &imageMemoryRequirements);
+    uint32_t memoryTypeIndex = getSuitableMemoryTypeIndex(appBase->physicalDevice, imageMemoryRequirements, memoryPropertyFlags);
 
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.pNext = nullptr;
     allocInfo.memoryTypeIndex = memoryTypeIndex;
     allocInfo.allocationSize = imageMemoryRequirements.size;
+    this->size = imageMemoryRequirements.size;
 
     VkDeviceMemory deviceMemory;
-    THROW(vkAllocateMemory(app->logicalDevice.get(), &allocInfo, nullptr, &deviceMemory), "Failed to allocate image memory");
+    THROW(vkAllocateMemory(appBase->getDevice(), &allocInfo, nullptr, &deviceMemory), "Failed to allocate image memory");
 
-    AppResource::init(app, app->resources.deviceMemorySet.create(deviceMemory));
+    AppResource::init(appBase, appBase->resources.deviceMemorySet.create(deviceMemory));
 }
 
 void AppDeviceMemory::destroy()
 {
-    getApp()->resources.deviceMemorySet.destroy(getIterator(), getApp()->logicalDevice.get()); 
+    appBase->resources.deviceMemorySet.destroy(getIterator(), appBase->getDevice()); 
 }

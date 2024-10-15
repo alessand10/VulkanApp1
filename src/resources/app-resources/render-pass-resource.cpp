@@ -1,4 +1,4 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "render-pass-resource.h"
 
 
@@ -70,7 +70,7 @@ static VkAttachmentDescription getAttachmentDescriptionFromTemplate(AttachmentTe
     }
 }
 
-void AppRenderPass::init(VulkanApp *app, std::vector<AttachmentTemplate> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies)
+void AppRenderPass::init(AppBase* appBase, std::vector<AttachmentTemplate> attachments, std::vector<AppSubpass> subpasses, std::vector<VkSubpassDependency> subpassDependencies)
 {
     VkRenderPassCreateInfo renderPassInfo{};
     std::vector<VkAttachmentDescription> attachmentDescriptions = {};
@@ -121,11 +121,11 @@ void AppRenderPass::init(VulkanApp *app, std::vector<AttachmentTemplate> attachm
     renderPassInfo.flags = 0U;
 
     VkRenderPass renderPass = VK_NULL_HANDLE;
-    THROW(vkCreateRenderPass(app->logicalDevice.get(), &renderPassInfo, nullptr, &renderPass), "Failed to create render pass");
-    AppResource::init(app, app->resources.renderPasses.create(renderPass));
+    THROW(vkCreateRenderPass(appBase->getDevice(), &renderPassInfo, nullptr, &renderPass), "Failed to create render pass");
+    AppResource::init(appBase, appBase->resources.renderPasses.create(renderPass));
 }
 
 void AppRenderPass::destroy()
 {
-    getApp()->resources.renderPasses.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.renderPasses.destroy(getIterator(), appBase->getDevice());
 }

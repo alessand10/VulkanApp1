@@ -1,7 +1,8 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "descriptor-pool-resource.h"
+#include "descriptor-set-layout-resource.h"
 
-void AppDescriptorPool::init(VulkanApp *app, uint32_t maxSetsCount, std::map<VkDescriptorType, uint32_t> descriptorTypeCounts)
+void AppDescriptorPool::init(AppBase* appBase, uint32_t maxSetsCount, std::map<VkDescriptorType, uint32_t> descriptorTypeCounts)
 {
     this->maxSetsCount = maxSetsCount;
     this->descriptorTypeCounts = descriptorTypeCounts;
@@ -22,26 +23,28 @@ void AppDescriptorPool::init(VulkanApp *app, uint32_t maxSetsCount, std::map<VkD
     createInfo.maxSets = maxSetsCount;
 
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
-    THROW(vkCreateDescriptorPool(app->logicalDevice.get(), &createInfo, nullptr, &descriptorPool), "Failed to create descriptor pool");
-    setRef(app->resources.descriptorPools.create(descriptorPool));
+    THROW(vkCreateDescriptorPool(appBase->getDevice(), &createInfo, nullptr, &descriptorPool), "Failed to create descriptor pool");
+    AppResource::init(appBase, appBase->resources.descriptorPools.create(descriptorPool));
 }
 
-VkDescriptorSet AppDescriptorPool::allocateDescriptorSet(VkDescriptorSetLayout descriptorSetLayout)
+VkDescriptorSet AppDescriptorPool::allocateDescriptorSet(AppDescriptorSetLayout* descriptorSetLayout)
 {
+    if (!this->isInitialized) throw std::runtime_error("Failed to allocate descriptor set, descriptor pool not initialized");
+
     VkDescriptorSetAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.pNext = nullptr;
-    allocInfo.pSetLayouts = &descriptorSetLayout;
+    allocInfo.pSetLayouts = descriptorSetLayout->getRef();
     allocInfo.descriptorSetCount = 1U;
     allocInfo.descriptorPool = this->get();
 
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
-    THROW(vkAllocateDescriptorSets(app->logicalDevice.get(), &allocInfo, &descriptorSet), "Failed to allocate descriptor set");
+    THROW(vkAllocateDescriptorSets(appBase->getDevice(), &allocInfo, &descriptorSet), "Failed to allocate descriptor set");
     
     return descriptorSet;
 }
 
 void AppDescriptorPool::destroy()
 {
-    getApp()->resources.descriptorPools.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.descriptorPools.destroy(getIterator(), appBase->getDevice());
 }

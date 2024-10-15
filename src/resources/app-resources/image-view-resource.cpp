@@ -1,4 +1,4 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "image-view-resource.h"
 
 static VkImageViewCreateInfo getImageViewCreateInfoFromTemplate(AppImageTemplate t, VkImage image, uint32_t layerCount, uint32_t baseLayer) {
@@ -79,27 +79,27 @@ static VkImageViewCreateInfo getImageViewCreateInfoFromTemplate(AppImageTemplate
     };
 };
 
-void AppImageView::init(VulkanApp *app, AppImage &image, uint32_t layerCount, uint32_t baseLayer)
+void AppImageView::init(AppBase* appBase, AppImage &image, uint32_t layerCount, uint32_t baseLayer)
 {
     VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(image.getTemplate(), image.get(), layerCount, baseLayer) };
     imageCreationTemplate = image.getTemplate();
     VkImageView imageView;
-    THROW(vkCreateImageView(app->logicalDevice.get(), &createInfo, nullptr, &imageView), "Failed to create image view");
+    THROW(vkCreateImageView(appBase->getDevice(), &createInfo, nullptr, &imageView), "Failed to create image view");
     
-    AppResource::init(app, app->resources.imageViews.create(imageView));
+    AppResource::init(appBase, appBase->resources.imageViews.create(imageView));
 }
 
-void AppImageView::init(VulkanApp *app, VkImage image, AppImageTemplate imageCreationTemplate, uint32_t layerCount, uint32_t baseLayer)
+void AppImageView::init(AppBase* appBase, VkImage image, AppImageTemplate imageCreationTemplate, uint32_t layerCount, uint32_t baseLayer)
 {
     VkImageViewCreateInfo createInfo{ getImageViewCreateInfoFromTemplate(imageCreationTemplate, image, layerCount, baseLayer) };
 
     VkImageView imageView;
-    THROW(vkCreateImageView(app->logicalDevice.get(), &createInfo, nullptr, &imageView), "Failed to create image view");
+    THROW(vkCreateImageView(appBase->getDevice(), &createInfo, nullptr, &imageView), "Failed to create image view");
     
-    AppResource::init(app, app->resources.imageViews.create(imageView));
+    AppResource::init(appBase, appBase->resources.imageViews.create(imageView));
 }
 
 void AppImageView::destroy()
 {
-    getApp()->resources.imageViews.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.imageViews.destroy(getIterator(), appBase->getDevice());
 }

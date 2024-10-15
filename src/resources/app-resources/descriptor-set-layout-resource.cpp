@@ -1,7 +1,7 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "descriptor-set-layout-resource.h"
 
-void AppDescriptorSetLayout::init(VulkanApp *app, std::vector<DescriptorItem> descriptorItems)
+void AppDescriptorSetLayout::init(AppBase* appBase, std::vector<DescriptorItem> descriptorItems)
 {
     uint32_t index = 0U;
     std::vector<VkDescriptorSetLayoutBinding> layoutBindings = {};
@@ -37,14 +37,14 @@ void AppDescriptorSetLayout::init(VulkanApp *app, std::vector<DescriptorItem> de
 
 
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-    THROW(vkCreateDescriptorSetLayout(app->logicalDevice.get(), &createInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout");
+    THROW(vkCreateDescriptorSetLayout(appBase->getDevice(), &createInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor set layout");
     
-    AppResource::init(app, app->resources.descriptorSetLayouts.create(descriptorSetLayout));
+    AppResource::init(appBase, appBase->resources.descriptorSetLayouts.create(descriptorSetLayout));
 }
 
 void AppDescriptorSetLayout::destroy()
 {
-    getApp()->resources.descriptorSetLayouts.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.descriptorSetLayouts.destroy(getIterator(), appBase->getDevice());
 }
 
 static VkDescriptorType getDescriptorTypeFromTemplate(AppDescriptorItemTemplate t) {

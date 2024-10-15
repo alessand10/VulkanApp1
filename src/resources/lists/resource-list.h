@@ -5,7 +5,7 @@
 template <typename T>
 class ResourceList {
 protected:
-    typename std::list<T> resourceList;
+    typename std::list<T> resourceList = {};
     virtual void destroy(typename std::list<T>::iterator it) {
         resourceList.erase(it);
     }

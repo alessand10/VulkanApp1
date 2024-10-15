@@ -1,7 +1,7 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "command-pool-resource.h"
 
-void AppCommandPool::init(VulkanApp *app, uint32_t queueFamilyIndex)
+void AppCommandPool::init(AppBase* appBase, uint32_t queueFamilyIndex)
 {
     this->queueFamilyIndex = queueFamilyIndex;
 
@@ -12,9 +12,9 @@ void AppCommandPool::init(VulkanApp *app, uint32_t queueFamilyIndex)
     createInfo.queueFamilyIndex = queueFamilyIndex;
 
     VkCommandPool commandPool;
-    THROW(vkCreateCommandPool(app->logicalDevice.get(), &createInfo, nullptr, &commandPool), "Failed to create command pool");
+    THROW(vkCreateCommandPool(appBase->getDevice(), &createInfo, nullptr, &commandPool), "Failed to create command pool");
     
-    AppResource::init(app, app->resources.commandPools.create(commandPool));
+    AppResource::init(appBase, appBase->resources.commandPools.create(commandPool));
 }
 
 VkCommandBuffer AppCommandPool::allocateCommandBuffer(VkCommandBufferLevel level)
@@ -28,11 +28,11 @@ VkCommandBuffer AppCommandPool::allocateCommandBuffer(VkCommandBufferLevel level
     allocInfo.commandBufferCount = 1U;
 
     VkCommandBuffer buffer;
-    THROW(vkAllocateCommandBuffers(app->logicalDevice.get(), &allocInfo, &buffer), "Failed to allocate command buffer");
+    THROW(vkAllocateCommandBuffers(appBase->getDevice(), &allocInfo, &buffer), "Failed to allocate command buffer");
     return buffer;
 }
 
 void AppCommandPool::destroy()
 {
-    getApp()->resources.commandPools.destroy(getIterator(), getApp()->logicalDevice.get()); 
+    appBase->resources.commandPools.destroy(getIterator(), appBase->getDevice()); 
 }

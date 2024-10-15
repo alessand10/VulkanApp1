@@ -8,6 +8,6 @@ enum class AppSamplerTemplate {
 class AppSampler : public AppResource<VkSampler> {
     AppSamplerTemplate samplerTemplate;
     public:
-    void init(class VulkanApp* app, AppSamplerTemplate samplerTemplate);
+    void init(class AppBase* appBase, AppSamplerTemplate samplerTemplate);
     void destroy();
 };

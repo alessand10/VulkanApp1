@@ -7,5 +7,5 @@ class PipelineLayoutList : public ResourceList<VkPipelineLayout> {
         vkDestroyPipelineLayout(device, *it, nullptr);
         ResourceList::destroy(it);
     }
-    void destroyAll(VkDevice device) {for (auto it = resourceList.begin(); it != resourceList.end(); it++) destroy(it, device);}
+    void destroyAll(VkDevice device) { while (!resourceList.empty()) destroy(resourceList.begin(), device);}
 };

@@ -1,4 +1,4 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "image-resource.h"
 #include "device-resource.h"
 #include "device-memory-resource.h"
@@ -83,7 +83,7 @@ VkImageCreateInfo getImageCreateInfoFromTemplate(AppImageTemplate t, uint32_t he
     };
 };
 
-void AppImage::init(VulkanApp *app, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout)
+void AppImage::init(AppBase* appBase, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout)
 {
     this->imageCreationTemplate = appImageTemplate;
     this->height = height;
@@ -95,12 +95,12 @@ void AppImage::init(VulkanApp *app, AppImageTemplate appImageTemplate, uint32_t 
 
     // Attempt to create the image
     VkImage image = VK_NULL_HANDLE;
-    THROW(vkCreateImage(app->logicalDevice.get(), &createInfo, nullptr, &image), "Failed to create image");
+    THROW(vkCreateImage(appBase->getDevice(), &createInfo, nullptr, &image), "Failed to create image");
 
-    AppResource::init(app, app->resources.images.create(image));
+    AppResource::init(appBase, appBase->resources.images.create(image));
 }
 
-void AppImage::init(VulkanApp *app, VkImage image, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout)
+void AppImage::init(AppBase* appBase, VkImage image, AppImageTemplate appImageTemplate, uint32_t height, uint32_t width, uint32_t layerCount, VkImageLayout layout)
 {
     this->imageCreationTemplate = appImageTemplate;
     this->height = height;
@@ -108,7 +108,7 @@ void AppImage::init(VulkanApp *app, VkImage image, AppImageTemplate appImageTemp
     this->layout = layout;
     this->layerCount = layerCount;
 
-    AppResource::init(app, app->resources.images.create(image));
+    AppResource::init(appBase, appBase->resources.images.create(image));
 }
 
 void AppImage::transitionLayout(VkImageLayout newLayout, VkCommandBuffer commandBuffer, uint32_t targetLayer, uint32_t layerCount)
@@ -142,7 +142,7 @@ void AppImage::transitionLayout(VkImageLayout newLayout, VkCommandBuffer command
     transferCompleteFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
     VkFence transferCompleteFence;
-    vkCreateFence(app->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
+    vkCreateFence(appBase->getDevice(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
 
     VkSubmitInfo submitInfo{};
     submitInfo.pCommandBuffers = &(commandBuffer);
@@ -155,29 +155,27 @@ void AppImage::transitionLayout(VkImageLayout newLayout, VkCommandBuffer command
     submitInfo.pWaitDstStageMask = nullptr;
     submitInfo.waitSemaphoreCount = 0u;
 
-    vkQueueSubmit(app->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
+    vkQueueSubmit(appBase->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
 
-    vkWaitForFences(app->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
+    vkWaitForFences(appBase->getDevice(), 1U, &transferCompleteFence, true, UINT32_MAX);
 
-    vkDeviceWaitIdle(app->logicalDevice.get());
+    vkDeviceWaitIdle(appBase->getDevice());
     
-    vkDestroyFence(app->logicalDevice.get(), transferCompleteFence, nullptr);
+    vkDestroyFence(appBase->getDevice(), transferCompleteFence, nullptr);
 
     this->layout = newLayout;
 }
 
 void AppImage::bindToMemory(AppDeviceMemory* imageMemory)
 {
-    VkDevice device = this->getApp()->logicalDevice.get();
     VkImage img = get();
     VkDeviceMemory memory = imageMemory->get();
 
-    THROW(vkBindImageMemory(device, img, memory, 0U), "Failed to bind image to memory");
+    THROW(vkBindImageMemory(appBase->getDevice(), img, memory, 0U), "Failed to bind image to memory");
 }
 
 void AppImage::copyImage(AppImage &src, AppImage &dst, VkCommandBuffer commandBuffer, uint32_t srcLayer, uint32_t dstLayer, uint32_t layerCount, VkImageAspectFlags srcAspect, VkImageAspectFlags dstAspect)
 {
-    VulkanApp* app = src.app;
     // Throw an error if the source and destination images are not in a valid layout for transfer
     if (!(src.layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL || src.layout == VK_IMAGE_LAYOUT_GENERAL)) {
         throw std::runtime_error("Source image must be in VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL or VK_IMAGE_LAYOUT_GENERAL layout");
@@ -226,19 +224,22 @@ void AppImage::copyImage(AppImage &src, AppImage &dst, VkCommandBuffer commandBu
     transferCompleteFenceInfo.pNext = nullptr;
     transferCompleteFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
+    AppBase* appBase = src.appBase;
+    VkDevice device = appBase->logicalDevice.get();
+
     VkFence transferCompleteFence;
-    vkCreateFence(app->logicalDevice.get(), &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
+    vkCreateFence(device, &transferCompleteFenceInfo, nullptr, &transferCompleteFence);
 
-    vkQueueSubmit(app->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
+    vkQueueSubmit(appBase->queues.graphicsQueue, 1U, &submitInfo, transferCompleteFence);
 
-    vkWaitForFences(app->logicalDevice.get(), 1U, &transferCompleteFence, true, UINT32_MAX);
+    vkWaitForFences(device, 1U, &transferCompleteFence, true, UINT32_MAX);
 
-    vkDeviceWaitIdle(app->logicalDevice.get());
+    vkDeviceWaitIdle(device);
     
-    vkDestroyFence(app->logicalDevice.get(), transferCompleteFence, nullptr);
+    vkDestroyFence(device, transferCompleteFence, nullptr);
 }
 
 void AppImage::destroy()
 {
-    getApp()->resources.images.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.images.destroy(getIterator(), appBase->getDevice());
 }

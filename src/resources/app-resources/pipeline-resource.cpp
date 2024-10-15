@@ -1,8 +1,9 @@
-#include "vulkan-app.h"
+#include "app-base.h"
 #include "pipeline-resource.h"
 #include "vertex.h"
+#include "app-config.h"
 
-void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass)
+void AppPipeline::init(AppBase* appBase, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass)
 {
     // Configure vertex buffer binding
 
@@ -11,45 +12,15 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
     vertBindDesc.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     vertBindDesc.stride = sizeof(Vertex);
 
-    VkVertexInputAttributeDescription attributeDesc[4] = {
-        // Position
-        {
-            0U, // Location, the shader input location (layout(location = 0) in vec3 position)
-            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
-            VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the position,
-            0U // Offset, this is the first attribute so use an offset of 0
-        },
-
-        // Normal
-        {
-            1U, // Location, the shader input location (layout(location = 1) in vec3 normal)
-            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
-            VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the normal,
-            12U // Offset, we use 12 bytes since position is made up of 3 x 4-byte values
-        },
-        // Tangent
-        {
-            2U, // Location, the shader input location (layout(location = 1) in vec3 normal)
-            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
-            VK_FORMAT_R32G32B32_SFLOAT, // Format, we use a Float3 for the normal,
-            24U // Offset, we use 12 bytes since position is made up of 3 x 4-byte values
-        },
-
-        // Texcoord
-        {
-            3U, // Location, the shader input location (layout(location = 2) in vec2 texCoord)
-            0U, // Binding, the binding number of the vertex buffer from which this data is coming,
-            VK_FORMAT_R32G32_SFLOAT, // Format, we use a Float2 for the texture coordinate,
-            36U // Offset, we use 24 bytes since position & normal take up 6 x 4-byte values
-        }
-    };
+    // Get the attribute description for the Vertex structure
+    std::vector<VkVertexInputAttributeDescription> description = Vertex::getAttributeDescriptions();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &vertBindDesc; 
-    vertexInputInfo.vertexAttributeDescriptionCount = 4;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDesc;
+    vertexInputInfo.vertexAttributeDescriptionCount = description.size();
+    vertexInputInfo.pVertexAttributeDescriptions = description.data();
 
     // Configure some input assembler setup
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
@@ -61,16 +32,16 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = (float) app->viewportSettings.width;
-    viewport.height = (float) app->viewportSettings.height;
+    viewport.width = (float) appBase->viewportSettings.width;
+    viewport.height = (float) appBase->viewportSettings.height;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     // Configure the scissor (can be used to discard rasterizer pixels)
     VkRect2D scissor{};
     scissor.offset = {0, 0};
-    scissor.extent.width = app->viewportSettings.width;
-    scissor.extent.height = app->viewportSettings.height;
+    scissor.extent.width = appBase->viewportSettings.width;
+    scissor.extent.height = appBase->viewportSettings.height;
 
     // Since we are dynamically specifying the viewport and scissor struct, theres no need to specify them in the viewport
     // state. We will set these values up later at draw time.
@@ -172,12 +143,12 @@ void AppPipeline::init(VulkanApp *app, std::vector<AppShaderModule> shaderModule
     colorSubpassPipelineInfo.basePipelineIndex = -1; // Optional
     
     VkPipeline pipeline = VK_NULL_HANDLE;
-    THROW(vkCreateGraphicsPipelines(app->logicalDevice.get(), VK_NULL_HANDLE, 1, &colorSubpassPipelineInfo, NULL, &pipeline), "Failed to create graphics pipeline");
+    THROW(vkCreateGraphicsPipelines(appBase->getDevice(), VK_NULL_HANDLE, 1, &colorSubpassPipelineInfo, NULL, &pipeline), "Failed to create graphics pipeline");
 
-    AppResource::init(app, app->resources.pipelines.create(pipeline));
+    AppResource::init(appBase, appBase->resources.pipelines.create(pipeline));
 }
 
 void AppPipeline::destroy()
 {
-    getApp()->resources.pipelines.destroy(getIterator(), getApp()->logicalDevice.get());
+    appBase->resources.pipelines.destroy(getIterator(), appBase->getDevice());
 }

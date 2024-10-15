@@ -9,7 +9,7 @@ struct DescriptorItem {
 
 class AppDescriptorSetLayout : public AppResource<VkDescriptorSetLayout> {
     public:
-    void init(VulkanApp* app, std::vector<DescriptorItem> descriptorItems);
+    void init(class AppBase* appBase, std::vector<DescriptorItem> descriptorItems);
 
     void destroy();  
 };
