@@ -1,7 +1,7 @@
 #include "geometry-utilities.h"
 
 
-std::vector<glm::vec3> computeTangentBitangent(glm::vec3 p1, glm::vec2 p1UV, glm::vec3 p2, glm::vec2 p2UV, glm::vec3 p3, glm::vec2 p3UV)
+std::pair<glm::vec3, glm::vec3> computeTangentBitangent(glm::vec3 p1, glm::vec2 p1UV, glm::vec3 p2, glm::vec2 p2UV, glm::vec3 p3, glm::vec2 p3UV)
 {
     /**
      * Approach: For a triangle formed from the points p1, p2, and p3, we can compute the tangent vector
@@ -37,5 +37,5 @@ std::vector<glm::vec3> computeTangentBitangent(glm::vec3 p1, glm::vec2 p1UV, glm
     glm::vec3 bitangent = {mInv[1][0] * edge1 + mInv[1][1] * edge2};
     bitangent = glm::normalize(bitangent);
 
-    return std::vector<glm::vec3> {tangent, bitangent};
+    return std::pair<glm::vec3, glm::vec3> {tangent, bitangent};
 }

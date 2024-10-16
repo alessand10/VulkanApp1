@@ -215,9 +215,16 @@ int GeometryManager::importOBJ(const char *path, VkCommandBuffer commandBuffer)
         std::map<uint32_t, uint32_t> texCoordSet;
         mesh->shape.name = shapes[s].name;
 
+        // The faces are initially using an order that leads to inverted normals, push them to the mesh in this order
+        int faceIndexOrder[] = {0, 1, -1};
+        uint32_t numFacesProcessed = 0u;
+
         // Iterate through the indices of the shape
-        for (uint32_t i = 0U ; i < shapes[s].mesh.indices.size() ; i++) {
-            tinyobj::index_t index = shapes[s].mesh.indices[i];
+        for (int i = 0U ; i < shapes[s].mesh.indices.size() ; i++) {
+
+            // Get the adjusted index, which is used to flip the normal (retrieve triangle indices in order 0, 2, 1 instead of 0, 1, 2)
+            uint32_t adjustedIndex = i + faceIndexOrder[i % 3];
+            tinyobj::index_t index = shapes[s].mesh.indices[adjustedIndex];
 
             tinyobj::index_t localIndex;
 

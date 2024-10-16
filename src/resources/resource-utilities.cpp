@@ -89,12 +89,6 @@ AppBufferBundle createBufferAll(AppBase* app, AppBufferTemplate bufferTemplate, 
 }
 
 
-
-void pushStagingBuffer(AppBuffer &stagingBuffer, AppBuffer &deviceLocalBuffer, VkCommandBuffer commandBuffer)
-{
-}
-
-
 static VkImageLayout getImageLayoutFromTemplate(AppImageTemplate t) {
     switch(t) {
         case AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE : {

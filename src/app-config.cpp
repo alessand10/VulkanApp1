@@ -1,5 +1,6 @@
 #include "vulkan-app.h"
 #include "file-utilities.h"
+#include "resource-utilities.h"
 #include "filesystem"
 #include <iostream>
 #include "app-config.h"
@@ -45,6 +46,8 @@ std::vector<void*> mappedUBOs = {};
 
 std::vector<AppFramebuffer> framebuffers = {};
 std::vector<AppImageView> swapchainImageViews = {};
+
+VSUniformBuffer uniformBuffer{};
 
 
 void createSwapchainAndResources(VulkanApp* app) {
@@ -207,6 +210,12 @@ void VulkanApp::userInit() {
     std::pair<std::vector<Vertex>, std::vector<uint32_t>> pair = mesh->getVertexAndIndexData();
     mesh->vertexBufferBlock = stagingVertexBufferManager.addElements(pair.first);
     mesh->indexBufferBlock = stagingIndexBufferManager.addElements(pair.second);
+
+    uint32_t vertexCopySize = (*mesh->vertexBufferBlock).byteSize;
+    AppBuffer::copyBuffer(stagingVertexBuffer.buffer, deviceVertexBuffer.buffer, commandBuffer, vertexCopySize);
+
+    uint32_t indexCopySize = (*mesh->indexBufferBlock).byteSize;
+    AppBuffer::copyBuffer(stagingIndexBuffer.buffer, deviceIndexBuffer.buffer, commandBuffer, indexCopySize);
     
 }
 
@@ -214,7 +223,6 @@ void VulkanApp::userInit() {
  * Writes the command buffer to be submitted, using a multithreaded approach
  */
 void writeCommandBuffer(uint32_t frame, ViewportSettings viewportSettings) {
-    vkResetCommandBuffer(commandBuffer, 0U);
     VkCommandBufferBeginInfo beginInfo {};
     beginInfo.pNext = nullptr;
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -231,7 +239,7 @@ void writeCommandBuffer(uint32_t frame, ViewportSettings viewportSettings) {
 
     VkClearValue clearValues[2]{};
     clearValues[0].color = {0.f, 0.f, 0.f, 1.f};
-    clearValues[1].depthStencil = {1.f, 255};
+    clearValues[1].depthStencil = {1.f, 0U};
     VkRenderPassBeginInfo renderPassBeginInfo {};
     renderPassBeginInfo.clearValueCount = 2;
     renderPassBeginInfo.pClearValues = clearValues;
@@ -252,18 +260,25 @@ void writeCommandBuffer(uint32_t frame, ViewportSettings viewportSettings) {
 }
 
 
+
 void VulkanApp::userTick(double deltaTime) {
 
     // Acquire the index of an available image to draw to
     uint32_t freeFrameIndex;
 
-    vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), 0U, imageAvailableSemaphore.get(), VK_NULL_HANDLE, &freeFrameIndex);
+    VkResult acqResult = vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), UINT64_MAX, imageAvailableSemaphore.get(), VK_NULL_HANDLE, &freeFrameIndex);
 
     // Wait for the in-flight fence to become signalled (last submitted queue has completed)
-    vkWaitForFences(logicalDevice.get(), 1U, inFlightFence.getRef(), true, UINT32_MAX);
+    vkWaitForFences(logicalDevice.get(), 1U, inFlightFence.getRef(), true, UINT64_MAX);
     vkResetFences(logicalDevice.get(), 1U, inFlightFence.getRef());
 
+    uniformBuffer.worldMatrix = glm::identity<glm::mat4>();
+    uniformBuffer.projMatrix = appCamera.getProjMatrix();
+    uniformBuffer.viewMatrix = appCamera.getViewMatrix();
+    memcpy(mappedUBOs[freeFrameIndex], &uniformBuffer, sizeof(VSUniformBuffer));
+
     // Write the command buffer
+    vkResetCommandBuffer(commandBuffer, 0U);
     writeCommandBuffer(freeFrameIndex, viewportSettings);
 
     // Indicates that the color attachment output stage must wait for the imageAvailableSemaphore
@@ -285,15 +300,13 @@ void VulkanApp::userTick(double deltaTime) {
     VkPresentInfoKHR presentInfo{};
     presentInfo.pNext = nullptr;
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.pImageIndices = &freeFrameIndex;
     presentInfo.pSwapchains = swapchain.getRef();
     presentInfo.pWaitSemaphores = renderingFinishedSemaphore.getRef();
     presentInfo.waitSemaphoreCount = 1U;
+    presentInfo.pImageIndices = &freeFrameIndex;
     presentInfo.swapchainCount = 1U;
 
     THROW(vkQueuePresentKHR(queues.graphicsQueue, &presentInfo), "Failed to present");
-
-
 }
 
 
