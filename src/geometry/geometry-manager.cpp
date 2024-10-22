@@ -7,42 +7,7 @@
 #include "string-utilities.h"
 #include "tiny_obj_loader.h"
 #include <set>
-
-void GeometryManager::insertMesh(Mesh *mesh, VkCommandBuffer commandBuffer)
-{
-    // uint32_t vertexCount = 0U;
-    // uint32_t indexCount = 0U;
-    // for (Face face : mesh->faces) {
-    //     uint32_t iProcOrder[] = {0, 2, 1};
-    //     glm::vec3 tangent = computeTangentBitangent(
-    //         mesh->positions[face.posIndices[iProcOrder[0]]],
-    //         mesh->texCoords[face.texCoordIndices[iProcOrder[0]]],
-    //         mesh->positions[face.posIndices[iProcOrder[1]]],
-    //         mesh->texCoords[face.texCoordIndices[iProcOrder[1]]],
-    //         mesh->positions[face.posIndices[iProcOrder[2]]],
-    //         mesh->texCoords[face.texCoordIndices[iProcOrder[2]]]
-    //     )[0];
-
-    //     for (uint32_t i = 0u ; i < 3 ; i++){
-    //         // vertexData.push_back({
-    //         //     mesh->positions[face.posIndices[iProcOrder[i]]],
-    //         //     mesh->normals[face.normalIndices[iProcOrder[i]]],
-    //         //     tangent,
-    //         //     mesh->texCoords[face.texCoordIndices[iProcOrder[i]]]
-    //         // });
-    //         // indexData.push_back(vertexCount);
-    //         // vertexCount++;
-    //         // indexCount++;
-    //     }
-    // }
-
-    // app->resourceManager.copyDataToStagingMemory(stagingVertexBuffer.deviceMemory, getVertexData(), getVertexDataSize());
-    // app->resourceManager.pushStagingBuffer(stagingVertexBuffer.buffer, deviceVertexBuffer.buffer, commandBuffer);
-
-    // app->resourceManager.copyDataToStagingMemory(stagingIndexBuffer.deviceMemory, getIndexData(), getIndexDataSize());
-    // app->resourceManager.pushStagingBuffer(stagingIndexBuffer.buffer, deviceIndexBuffer.buffer, commandBuffer);
-
-}
+#include "resource-structs.h"
 
 
 // void GeometryManager::setVertexBuffers(AppBufferBundle stagingVertexBuffer, AppBufferBundle deviceVertexBuffer)
@@ -210,10 +175,10 @@ int GeometryManager::importOBJ(const char *path, VkCommandBuffer commandBuffer)
 
         // Store the indices of vertices, normals, texCoords that we must copy to the mesh
         // The key is the vertex index, the value is the local index in the mesh
-        std::map<uint32_t, uint32_t> vertexSet;
+        std::map<uint32_t, uint32_t> positionSet;
         std::map<uint32_t, uint32_t> normalSet;
         std::map<uint32_t, uint32_t> texCoordSet;
-        mesh->shape.name = shapes[s].name;
+        mesh->setShapeName(shapes[s].name);
 
         // The faces are initially using an order that leads to inverted normals, push them to the mesh in this order
         int faceIndexOrder[] = {0, 1, -1};
@@ -226,35 +191,46 @@ int GeometryManager::importOBJ(const char *path, VkCommandBuffer commandBuffer)
             uint32_t adjustedIndex = i + faceIndexOrder[i % 3];
             tinyobj::index_t index = shapes[s].mesh.indices[adjustedIndex];
 
-            tinyobj::index_t localIndex;
+            GeometryBase::VertexIndices localIndices {};
 
             // If we haven't already inserted this vertex index into the mesh, insert it
-            if (vertexSet.find(index.vertex_index) == vertexSet.end()) {
-                vertexSet[index.vertex_index] = mesh->attrib.vertices.size();
-                for (uint32_t vOffset = 0U ; vOffset < 3 ; vOffset++) 
-                    mesh->attrib.vertices.push_back(attrib.vertices[3 * index.vertex_index + vOffset]);
+            if (positionSet.find(index.vertex_index) == positionSet.end()) {
+                positionSet[index.vertex_index] = mesh->getPositions().size() * 3;
+                glm::vec3 position = {
+                    attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]
+                };
+                mesh->addPosition(position);
             }
-            localIndex.vertex_index = vertexSet[index.vertex_index];
+            localIndices.positionIndex = positionSet[index.vertex_index] / 3;
 
 
             // If we haven't already inserted this normal index into the mesh, insert it
             if (normalSet.find(index.normal_index) == normalSet.end()) {
-                normalSet[index.normal_index] = mesh->attrib.normals.size();
-                for (uint32_t nOffset = 0U ; nOffset < 3 ; nOffset++)
-                    mesh->attrib.normals.push_back(attrib.normals[3 * index.normal_index + nOffset]);
+                normalSet[index.normal_index] = mesh->getNormals().size() * 3;
+                glm::vec3 normal = {
+                    attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2]
+                };
+                mesh->addNormal(normal);
             }
-            localIndex.normal_index = normalSet[index.normal_index];
+            localIndices.normalIndex = normalSet[index.normal_index] / 3;
             
 
             // If we haven't already inserted this texcoord index into the mesh, insert it
             if (texCoordSet.find(index.texcoord_index) == texCoordSet.end()) {
-                texCoordSet[index.texcoord_index] = mesh->attrib.texcoords.size();
-                for (uint32_t tOffset = 0U ; tOffset < 2 ; tOffset++)
-                    mesh->attrib.texcoords.push_back(attrib.texcoords[2 * index.texcoord_index + tOffset]);
+                texCoordSet[index.texcoord_index] = mesh->getTexCoords().size() * 2;
+                glm::vec2 texCoord = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+                mesh->addTexCoord(texCoord);
             }
-            localIndex.texcoord_index = texCoordSet[index.texcoord_index];
+            localIndices.texCoordIndex = texCoordSet[index.texcoord_index] / 2;
 
-            mesh->shape.mesh.indices.push_back(localIndex);
+            mesh->addVertexIndex(localIndices.positionIndex, localIndices.texCoordIndex, localIndices.normalIndex);
         }
     }
     return shapes.size();

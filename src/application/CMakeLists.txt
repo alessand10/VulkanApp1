@@ -10,10 +10,15 @@ target_include_directories(application  PUBLIC ${CMAKE_SOURCE_DIR}/src/applicati
 find_package(tinyobjloader REQUIRED)
 find_package(VulkanHeaders REQUIRED)
 find_package(VulkanLoader REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 target_link_libraries(application   PUBLIC tinyobjloader::tinyobjloader
-                                    PUBLIC rendering
+                                    PUBLIC render
                                     PUBLIC geometry
                                     PUBLIC resources
                                     PUBLIC general-utils
+                                    PUBLIC image
+                                    Qt6::Core
+                                    Qt6::Gui
+                                    Qt6::Widgets
                                     )

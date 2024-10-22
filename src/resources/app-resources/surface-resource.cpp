@@ -10,6 +10,11 @@ void AppSurface::init(AppBase* appBase, GLFWwindow *window)
     AppResource::init(appBase, appBase->resources.surfaces.create(surface));
 }
 
+void AppSurface::init(AppBase *appBase, VkSurfaceKHR surface)
+{
+    AppResource::init(appBase, appBase->resources.surfaces.create(surface));
+}
+
 void AppSurface::destroy()
 {
     appBase->resources.surfaces.destroy(getIterator(), appBase->getInstance());

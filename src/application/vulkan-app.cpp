@@ -3,17 +3,20 @@
 #include "GLFW/glfw3.h"
 #include <mesh.h>
 #include "filesystem"
+#include <QVulkanInstance>
+#include <QWindow>
+#include <QWidget>
+#include <QApplication>
+
 
 VulkanApp* appHandle;
 
 void VulkanApp::internalInit()
 {   
+    glfwInit();
+    
     // keep track of the handle to call this app's methods from glfw static callback functions
     appHandle = this;
-    glfwInit();
-
-    // Initialize the vulkan loader
-    glfwInitVulkanLoader(vkGetInstanceProcAddr);
 
     // Set up some viewport defaults
     viewportSettings.height = 1080U;
@@ -27,6 +30,21 @@ void VulkanApp::internalInit()
 
     // Create the instance
     instance.init(this, "Vulkan App", true);
+
+    // int argc = 0;
+    // char** argv = nullptr;
+    // QApplication qtApp(argc, argv);
+
+    // QVulkanInstance qtInstance;
+    // qtInstance.setVkInstance(instance.get());
+    // qtInstance.create();
+    // std::cout << qtInstance.errorCode() << std::endl;
+
+    // QWindow* window = new QWindow();
+    // window->setSurfaceType(QSurface::VulkanSurface);
+    // window->setVulkanInstance(&qtInstance);
+    // QWidget* windowWrapper = QWidget::createWindowContainer(window);
+    // VkSurfaceKHR qtSurface = QVulkanInstance::surfaceForWindow(window);
 
     // Enumerate the physical device and queue families
     enumeratePhysicalDevice();

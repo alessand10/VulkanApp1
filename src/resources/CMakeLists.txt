@@ -25,7 +25,7 @@ find_package(VulkanLoader REQUIRED)
 target_link_libraries(resources PUBLIC tinyobjloader::tinyobjloader
                                 PUBLIC general-utils
                                 PUBLIC application
-                                PUBLIC rendering
+                                PUBLIC render
                                 PUBLIC geometry)
 
 target_include_directories(resources    PUBLIC ${CMAKE_SOURCE_DIR}/src/resources

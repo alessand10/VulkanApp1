@@ -14,7 +14,7 @@ void copyDataToStagingMemory(AppDeviceMemory stagingMemory, void *data, size_t s
     vkUnmapMemory(stagingMemory.getAppBase()->getDevice(), stagingMemory.get());
 }
 
-void loadJPEGImage(AppBase *app, const char *path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer)
+void loadImage(AppBase *app, Image srcImage, AppImage appImage, VkCommandBuffer commandBuffer, uint32_t targetLayer)
 {
     VkDevice device = app->logicalDevice.get();
     
@@ -31,7 +31,6 @@ void loadJPEGImage(AppBase *app, const char *path, AppImage image, VkCommandBuff
     tjhandle turboJpegHandle = tj3Init(TJINIT_DECOMPRESS);
 
     // Read in the jpeg image file
-    std::vector<char> jpegImage = readJPEG(path, imageMemoryRequirements.alignment, &width, &height);
 
     // Define the staging image and memory that the CPU will write into
     AppImage stagingImage;

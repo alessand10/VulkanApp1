@@ -19,7 +19,10 @@
 #include "fence-resource.h"
 #include "device-memory-resource.h"
 
-void loadJPEGImage(AppBase* appBase, const char* path, AppImage image, VkCommandBuffer commandBuffer, uint32_t targetLayer);
+
+void copyDataToStagingMemory(AppDeviceMemory stagingMemory, void *data, size_t size);
+
+void loadImage(AppBase* appBase, Image srcImage, AppImage appImage, VkCommandBuffer commandBuffer, uint32_t targetLayer);
 
 /**
  * @brief Renders a cube map to image array with 6 layers
@@ -65,5 +68,4 @@ AppBufferBundle createBufferAll(class AppBase* app, AppBufferTemplate bufferTemp
  */
 void updateDescriptor(AppImageView imageView, VkDescriptorSet set, uint32_t binding, VkDescriptorType descriptorType, AppSampler sampler = AppSampler{});
 void updateDescriptor(AppBuffer buffer, VkDescriptorSet set, uint32_t size,  uint32_t binding, VkDescriptorType descriptorType);
-
 

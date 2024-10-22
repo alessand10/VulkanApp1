@@ -3,7 +3,7 @@
 #include "vertex.h"
 #include "app-config.h"
 
-void AppPipeline::init(AppBase* appBase, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass)
+void AppPipeline::init(AppBase* appBase, std::vector<AppShaderModule> shaderModules, AppPipelineLayout pipelineLayout, AppRenderPass renderPass, uint32_t flags)
 {
     // Configure vertex buffer binding
 
@@ -139,6 +139,7 @@ void AppPipeline::init(AppBase* appBase, std::vector<AppShaderModule> shaderModu
     colorSubpassPipelineInfo.layout = pipelineLayout.get();
     colorSubpassPipelineInfo.renderPass = renderPass.get();
     colorSubpassPipelineInfo.subpass = 0;
+    colorSubpassPipelineInfo.flags = flags;
     colorSubpassPipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
     colorSubpassPipelineInfo.basePipelineIndex = -1; // Optional
     

@@ -19,20 +19,14 @@ class GeometryManager {
     private:
     class VulkanApp* app;
 
-    MemoryListTree vertexBufferMlt;
-    MemoryListTree indexBufferMlt;
-
     std::vector<Mesh> meshes;
 
     bool buffersInitialized = false;
-    
-    void insertMesh(Mesh* mesh, VkCommandBuffer commandBuffer);
+
 
     public:
-    void init(class VulkanApp* app, uint32_t vertexCount, uint32_t indexCount) {
+    void init(class VulkanApp* app) {
         this->app = app;
-        vertexBufferMlt.init(vertexCount);
-        indexBufferMlt.init(indexCount);
     };
 
     Mesh* getMesh(uint32_t index) {

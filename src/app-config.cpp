@@ -4,6 +4,12 @@
 #include "filesystem"
 #include <iostream>
 #include "app-config.h"
+#include "render-utilities.h"
+#include "vertex-buffer-manager.h"
+#include "material-input.h"
+#include "material-blueprint.h"
+#include "image/image.h"
+#include "image/image-loader.h"
 
 AppImageBundle albedo;
 AppImageBundle normal;
@@ -20,11 +26,9 @@ VkCommandBuffer commandBuffer;
 
 AppBufferBundle stagingVertexBuffer;
 AppBufferBundle deviceVertexBuffer;
-StagingBufferManager<Vertex> stagingVertexBufferManager;
-
 AppBufferBundle stagingIndexBuffer;
 AppBufferBundle deviceIndexBuffer;
-StagingBufferManager<uint32_t> stagingIndexBufferManager;
+VIBufferManager viBufferManager;
 
 std::vector<AppBufferBundle> uniformBuffersVS;
 AppDescriptorSetLayout descriptorSetLayout;
@@ -112,9 +116,6 @@ void VulkanApp::userInit() {
 
     createSwapchainAndResources(this);
 
-    // Create an app image bundle for the albedo and normal textures
-    albedo = createImageAll(this, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
-    normal = createImageAll(this, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
 
     // Create a command pool for graphics family command buffers
     commandPool.init(this, this->queueFamilyIndices.graphics);
@@ -122,29 +123,21 @@ void VulkanApp::userInit() {
     // Allocate a command buffer from the command pool
     commandBuffer = commandPool.allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-    // Load the brick wall texture into layer 0 of the albedo and normal, respectively
-    loadJPEGImage(this, "../images/alley-brick-wall_albedo.jpg", albedo.image, commandBuffer, 0U);
-    loadJPEGImage(this, "../images/alley-brick-wall_normal-dx.jpg", normal.image, commandBuffer, 0U);
-
-    loadJPEGImage(this, "../images/new-brick-wall-albedo.jpeg", albedo.image, commandBuffer, 1U);
-    loadJPEGImage(this, "../images/new-brick-wall-normal.jpeg", normal.image, commandBuffer, 1U);
-
     // Create the vertex and index staging buffers
-    stagingVertexBuffer = createBufferAll(this, AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * supportedVertexCount);
+    stagingVertexBuffer = createBufferAll(this, AppBufferTemplate::VERTEX_BUFFER_STAGING, sizeof(Vertex) * 200);
     deviceVertexBuffer = createBufferAll(this, AppBufferTemplate::VERTEX_BUFFER_DEVICE, sizeof(Vertex) * supportedVertexCount);
-    stagingIndexBuffer = createBufferAll(this, AppBufferTemplate::INDEX_BUFFER_STAGING, sizeof(uint32_t) * supportedIndexCount);
+    stagingIndexBuffer = createBufferAll(this, AppBufferTemplate::INDEX_BUFFER_STAGING, sizeof(uint32_t) * 200);
     deviceIndexBuffer = createBufferAll(this, AppBufferTemplate::INDEX_BUFFER_DEVICE, sizeof(uint32_t) * supportedIndexCount);
 
     // Initialize the staging buffer managers
-    stagingVertexBufferManager.init(&stagingVertexBuffer.deviceMemory);
-    stagingIndexBufferManager.init(&stagingIndexBuffer.deviceMemory);
+    viBufferManager.init(deviceVertexBuffer, deviceIndexBuffer, stagingVertexBuffer, stagingIndexBuffer);
 
     // Create a descriptor pool capable of storing the uniform buffer for each frame in flight, the albedo and the normal
     descriptorPool.init(this, swapchain.getImageCount(), {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, swapchain.getImageCount()},
         {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2}
     });
-
+    
     // Create the descriptor set layout
     descriptorSetLayout.init(this, {
         {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
@@ -153,6 +146,10 @@ void VulkanApp::userInit() {
     });
 
     sampler.init(this, AppSamplerTemplate::DEFAULT);
+
+    // Create an app image bundle for the albedo and normal textures
+    albedo = createImageAll(this, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
+    normal = createImageAll(this, 2048U, 2048U, AppImageTemplate::PREWRITTEN_SAMPLED_TEXTURE, 2U);
 
     for (uint32_t frame = 0u; frame < swapchain.getImageCount() ; frame++) {
         // Create a uniform buffer for all frames in flight
@@ -204,25 +201,52 @@ void VulkanApp::userInit() {
     imageAvailableSemaphore.init(this);
     inFlightFence.init(this, VK_FENCE_CREATE_SIGNALED_BIT);
 
-    geometryManager.importOBJ("../mesh/cube.obj", commandBuffer);
-
-    Mesh* mesh = geometryManager.getMesh(0);
-    std::pair<std::vector<Vertex>, std::vector<uint32_t>> pair = mesh->getVertexAndIndexData();
-    mesh->vertexBufferBlock = stagingVertexBufferManager.addElements(pair.first);
-    mesh->indexBufferBlock = stagingIndexBufferManager.addElements(pair.second);
-
-    uint32_t vertexCopySize = (*mesh->vertexBufferBlock).byteSize;
-    AppBuffer::copyBuffer(stagingVertexBuffer.buffer, deviceVertexBuffer.buffer, commandBuffer, vertexCopySize);
-
-    uint32_t indexCopySize = (*mesh->indexBufferBlock).byteSize;
-    AppBuffer::copyBuffer(stagingIndexBuffer.buffer, deviceIndexBuffer.buffer, commandBuffer, indexCopySize);
     
+
+    geometryManager.importOBJ("../mesh/cube.obj", commandBuffer);
+    geometryManager.importOBJ("../mesh/cube1.obj", commandBuffer);
+
+      // Load the brick wall texture into layer 0 of the albedo and normal, respectively
+    loadImage(this, "../images/alley-brick-wall_albedo.jpg", albedo.image, commandBuffer, 0U);
+    loadImage(this, "../images/alley-brick-wall_normal-dx.jpg", normal.image, commandBuffer, 0U);
+
+    loadImage(this, "../images/new-brick-wall-albedo.jpeg", albedo.image, commandBuffer, 1U);
+    loadImage(this, "../images/new-brick-wall-normal.jpeg", normal.image, commandBuffer, 1U);
+
+    viBufferManager.addGeometry(geometryManager.getMesh(0), commandBuffer);
+    viBufferManager.addGeometry(geometryManager.getMesh(1), commandBuffer);
+
+    Image brickWallAlbedo = ImageLoader::loadJPEGFromFile("../images/alley-brick-wall_albedo.jpg", 0U);
+    Image brickWallNormal = ImageLoader::loadJPEGFromFile("../images/alley-brick-wall_normal.jpg", 0U);
+
+    MaterialBlueprint pbrMaterialBlueprint;
+    //pbrMaterialBlueprint.init(graphicsPipeline.get());
+
+    struct PBRMaterialInput : public MaterialInput {
+        MaterialInputImage albedo {"Albedo"};
+        MaterialInputImage normal {"Normal"};
+        
+        PBRMaterialInput() {
+            inputTextureImages = {albedo, normal};
+        };
+    };
+
+    PBRMaterialInput brickWall;
+    brickWall.albedo.image = &brickWallAlbedo;
+    brickWall.normal.image = &brickWallNormal;
+
+    Material matBrickWall = pbrMaterialBlueprint.createMaterial(&brickWall);
+
+    geometryManager.getMesh(0)->setMaterial(&matBrickWall);
+
 }
 
 /**
  * Writes the command buffer to be submitted, using a multithreaded approach
  */
-void writeCommandBuffer(uint32_t frame, ViewportSettings viewportSettings) {
+void writeCommandBuffer(uint32_t frame, AppBase* appBase) {
+    ViewportSettings viewportSettings = appBase->viewportSettings;
+
     VkCommandBufferBeginInfo beginInfo {};
     beginInfo.pNext = nullptr;
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -234,26 +258,20 @@ void writeCommandBuffer(uint32_t frame, ViewportSettings viewportSettings) {
 
     VkDeviceSize vertexBufferOffsets = 0U;
     vkCmdBindVertexBuffers(commandBuffer, 0U, 1U, deviceVertexBuffer.buffer.getRef(), &vertexBufferOffsets);
-
     vkCmdBindIndexBuffer(commandBuffer, deviceIndexBuffer.buffer.get(), 0U, VK_INDEX_TYPE_UINT32);
 
-    VkClearValue clearValues[2]{};
-    clearValues[0].color = {0.f, 0.f, 0.f, 1.f};
-    clearValues[1].depthStencil = {1.f, 0U};
-    VkRenderPassBeginInfo renderPassBeginInfo {};
-    renderPassBeginInfo.clearValueCount = 2;
-    renderPassBeginInfo.pClearValues = clearValues;
-    renderPassBeginInfo.framebuffer = framebuffers[frame].get();
-    renderPassBeginInfo.pNext = nullptr;
-    renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassBeginInfo.renderPass = renderPass.get();
-    renderPassBeginInfo.renderArea.extent = {viewportSettings.width, viewportSettings.height};
-    renderPassBeginInfo.renderArea.offset = {static_cast<int>(viewportSettings.x), static_cast<int>(viewportSettings.y)};
+    appBeginRenderPass(&renderPass, &framebuffers[frame], commandBuffer);
 
-    vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    // Draw mesh 1
     FragmentPushConst pushConst{0U};
     vkCmdPushConstants(commandBuffer, pipelineLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst), &pushConst);
-    vkCmdDrawIndexed(commandBuffer, 36U, 1U, 0U, 0U, 0U);
+    drawMesh(appBase->geometryManager.getMesh(0U), commandBuffer);
+    
+    // Draw mesh 2
+    pushConst.textureIndex = 1U;
+    vkCmdPushConstants(commandBuffer, pipelineLayout.get(), VK_SHADER_STAGE_FRAGMENT_BIT, 0U, sizeof(FragmentPushConst), &pushConst);
+    drawMesh(appBase->geometryManager.getMesh(1U), commandBuffer);
+    
     vkCmdEndRenderPass(commandBuffer);
 
     vkEndCommandBuffer(commandBuffer);
@@ -266,10 +284,11 @@ void VulkanApp::userTick(double deltaTime) {
     // Acquire the index of an available image to draw to
     uint32_t freeFrameIndex;
 
-    VkResult acqResult = vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), UINT64_MAX, imageAvailableSemaphore.get(), VK_NULL_HANDLE, &freeFrameIndex);
-
     // Wait for the in-flight fence to become signalled (last submitted queue has completed)
     vkWaitForFences(logicalDevice.get(), 1U, inFlightFence.getRef(), true, UINT64_MAX);
+
+    vkAcquireNextImageKHR(logicalDevice.get(), swapchain.get(), UINT64_MAX, imageAvailableSemaphore.get(), VK_NULL_HANDLE, &freeFrameIndex);
+
     vkResetFences(logicalDevice.get(), 1U, inFlightFence.getRef());
 
     uniformBuffer.worldMatrix = glm::identity<glm::mat4>();
@@ -279,16 +298,17 @@ void VulkanApp::userTick(double deltaTime) {
 
     // Write the command buffer
     vkResetCommandBuffer(commandBuffer, 0U);
-    writeCommandBuffer(freeFrameIndex, viewportSettings);
+    writeCommandBuffer(freeFrameIndex, this);
 
     // Indicates that the color attachment output stage must wait for the imageAvailableSemaphore
     VkPipelineStageFlags waitSemaphoreStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSemaphore waitSemaphores[] = {imageAvailableSemaphore.get()};
     VkSubmitInfo submitInfo{};
     submitInfo.pNext = nullptr;
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
     submitInfo.commandBufferCount = 1U;
     submitInfo.pCommandBuffers = &commandBuffer;
-    submitInfo.pWaitSemaphores = imageAvailableSemaphore.getRef();
+    submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.waitSemaphoreCount = 1U;
     submitInfo.pSignalSemaphores = renderingFinishedSemaphore.getRef();
     submitInfo.signalSemaphoreCount = 1U;
